@@ -1,0 +1,18 @@
+{
+  "personalbeacon.screen.title": "Beacon Access Control",
+  "personalbeacon.screen.beacon_pos": "Beacon: %s, %s, %s",
+  "personalbeacon.screen.loading": "Loading...",
+  "personalbeacon.screen.no_restrictions": "No restrictions set — everyone receives effects.",
+  "personalbeacon.screen.click_to_add": "Click below to restrict access to specific players.",
+  "personalbeacon.screen.add_players": "+ Add Players",
+  "personalbeacon.screen.close": "✕  Close",
+  "personalbeacon.screen.manage_access": "⬡ Manage Access",
+  "personalbeacon.screen.allowed": "✔ Allow",
+  "personalbeacon.screen.blocked": "✘ Block",
+  "personalbeacon.screen.column_player": "Player",
+  "personalbeacon.screen.column_access": "Access",
+  "personalbeacon.screen.singleplayer_title": "⚠  Single Player Mode",
+  "personalbeacon.screen.singleplayer_desc": "Access control requires a multiplayer server.",
+  "personalbeacon.screen.scroll_up": "▲",
+  "personalbeacon.screen.scroll_down": "▼"
+}

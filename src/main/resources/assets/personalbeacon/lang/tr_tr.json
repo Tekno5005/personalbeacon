@@ -1,0 +1,18 @@
+{
+  "personalbeacon.screen.title": "Beacon Erisim Kontrolu",
+  "personalbeacon.screen.beacon_pos": "Beacon: %s, %s, %s",
+  "personalbeacon.screen.loading": "Yukleniyor...",
+  "personalbeacon.screen.no_restrictions": "Kisitlama yok — herkes efekt aliyor.",
+  "personalbeacon.screen.click_to_add": "Belirli oyunculara kisitlamak icin asagiya tiklayin.",
+  "personalbeacon.screen.add_players": "+ Oyuncu Ekle",
+  "personalbeacon.screen.close": "✕  Kapat",
+  "personalbeacon.screen.manage_access": "⬡ Erisimi Yonet",
+  "personalbeacon.screen.allowed": "✔ Izinli",
+  "personalbeacon.screen.blocked": "✘ Engelli",
+  "personalbeacon.screen.column_player": "Oyuncu",
+  "personalbeacon.screen.column_access": "Erisim",
+  "personalbeacon.screen.singleplayer_title": "⚠  Tek Oyunculu Mod",
+  "personalbeacon.screen.singleplayer_desc": "Erisim kontrolu cok oyunculu sunucu gerektirir.",
+  "personalbeacon.screen.scroll_up": "▲",
+  "personalbeacon.screen.scroll_down": "▼"
+}

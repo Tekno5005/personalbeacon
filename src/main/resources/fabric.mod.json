@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 1,
+  "id": "personalbeacon",
+  "version": "${version}",
+  "name": "Personal Beacon",
+  "description": "Restrict beacon effects to specific players.",
+  "authors": ["YourName"],
+  "contact": {},
+  "license": "MIT",
+  "icon": "assets/personalbeacon/icon.png",
+  "environment": "*",
+  "entrypoints": {
+    "main": [
+      "net.tekno.personalbeacon.PersonalBeaconMod"
+    ],
+    "client": [
+      "net.tekno.personalbeacon.PersonalBeaconClient"
+    ]
+  },
+  "mixins": [
+    "personalbeacon.mixins.json"
+  ],
+  "depends": {
+    "fabricloader": ">=0.15.0",
+    "fabric-api": "*",
+    "minecraft": "~1.20.1",
+    "java": ">=17"
+  }
+}

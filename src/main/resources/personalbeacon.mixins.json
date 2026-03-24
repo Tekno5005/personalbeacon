@@ -1,0 +1,16 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "net.tekno.personalbeacon.mixin",
+  "compatibilityLevel": "JAVA_17",
+  "mixins": [
+    "BeaconBlockEntityMixin",
+    "BeaconScreenHandlerAccessor"
+  ],
+  "client": [
+    "BeaconScreenMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

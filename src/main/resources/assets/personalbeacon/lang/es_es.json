@@ -1,0 +1,18 @@
+{
+  "personalbeacon.screen.title": "Control de acceso al Beacon",
+  "personalbeacon.screen.beacon_pos": "Beacon: %s, %s, %s",
+  "personalbeacon.screen.loading": "Cargando...",
+  "personalbeacon.screen.no_restrictions": "Sin restricciones — todos reciben los efectos.",
+  "personalbeacon.screen.click_to_add": "Haz clic abajo para restringir el acceso.",
+  "personalbeacon.screen.add_players": "+ Agregar jugadores",
+  "personalbeacon.screen.close": "✕  Cerrar",
+  "personalbeacon.screen.manage_access": "⬡ Gestionar acceso",
+  "personalbeacon.screen.allowed": "✔ Permitido",
+  "personalbeacon.screen.blocked": "✘ Bloqueado",
+  "personalbeacon.screen.column_player": "Jugador",
+  "personalbeacon.screen.column_access": "Acceso",
+  "personalbeacon.screen.singleplayer_title": "⚠  Modo Un Jugador",
+  "personalbeacon.screen.singleplayer_desc": "El control de acceso requiere un servidor multijugador.",
+  "personalbeacon.screen.scroll_up": "▲",
+  "personalbeacon.screen.scroll_down": "▼"
+}
