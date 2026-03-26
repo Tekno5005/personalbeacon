@@ -14,5 +14,7 @@
   "personalbeacon.screen.singleplayer_title": "⚠  Mode Solo",
   "personalbeacon.screen.singleplayer_desc": "Le controle d'acces necessite un serveur multijoueur.",
   "personalbeacon.screen.scroll_up": "▲",
-  "personalbeacon.screen.scroll_down": "▼"
+  "personalbeacon.screen.scroll_down": "▼",
+  "personalbeacon.screen.owner": "★ Proprietaire : %s",
+  "personalbeacon.screen.view_only": "⚠ Lecture seule — vous n'etes pas le proprietaire"
 }

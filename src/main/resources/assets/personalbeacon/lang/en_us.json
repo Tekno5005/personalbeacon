@@ -14,5 +14,7 @@
   "personalbeacon.screen.singleplayer_title": "⚠  Single Player Mode",
   "personalbeacon.screen.singleplayer_desc": "Access control requires a multiplayer server.",
   "personalbeacon.screen.scroll_up": "▲",
-  "personalbeacon.screen.scroll_down": "▼"
+  "personalbeacon.screen.scroll_down": "▼",
+  "personalbeacon.screen.owner": "★ Owner: %s",
+  "personalbeacon.screen.view_only": "⚠ View only — you are not the owner"
 }

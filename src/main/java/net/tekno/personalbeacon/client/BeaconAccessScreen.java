@@ -7,13 +7,16 @@ import net.fabricmc.fabric.api.networking.v1.PacketByteBufs;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.gui.screen.ingame.BeaconScreen;
+import net.minecraft.client.gui.tooltip.Tooltip;
 import net.minecraft.client.gui.widget.ButtonWidget;
 import net.minecraft.client.network.PlayerListEntry;
 import net.minecraft.network.PacketByteBuf;
 import net.minecraft.text.Text;
+import net.minecraft.util.Identifier;
 import net.minecraft.util.math.BlockPos;
 import net.tekno.personalbeacon.ModNetworking;
 import net.tekno.personalbeacon.PersonalBeaconMod;
+import net.tekno.personalbeacon.client.GuiEditorScreen;
 
 import java.util.*;
 
@@ -51,20 +54,26 @@ public class BeaconAccessScreen extends Screen {
 
     private int panelX, panelY, panelW, panelH;
 
-    // Colors
-    private static final int COLOR_BG_DARK    = 0xE0101018;
-    private static final int COLOR_BORDER     = 0xFF3A6BC4;
-    private static final int COLOR_BORDER_DIM = 0xFF1E3A6E;
-    private static final int COLOR_ALLOWED    = 0xFF44DD77;
-    private static final int COLOR_BLOCKED    = 0xFFAA4444;
-    private static final int COLOR_OFFLINE    = 0xFF888888;
-    private static final int COLOR_OWNER      = 0xFFFFCC44;
-    private static final int COLOR_TEXT_MAIN  = 0xFFFFFFFF;
-    private static final int COLOR_TEXT_DIM   = 0xFF8899AA;
-    private static final int COLOR_TEXT_GOLD  = 0xFFFFBB33;
-    private static final int COLOR_HEADER_BG  = 0xE0000A20;
-    private static final int COLOR_ROW_EVEN   = 0x331A2A40;
-    private static final int COLOR_ROW_ODD    = 0x22000010;
+    private static final Identifier GUI_TEXTURE =
+        new Identifier("personalbeacon", "textures/gui/custom_beacon_gui.png");
+    private static final int TEXTURE_W = 352;
+    private static final int TEXTURE_H = 334;
+
+    private static final Identifier WINDOW1_TEXTURE =
+        new Identifier("personalbeacon", "textures/gui/window1.png");
+    private static final Identifier WINDOW2_TEXTURE =
+        new Identifier("personalbeacon", "textures/gui/window2.png");
+    private static final Identifier WINDOW3_TEXTURE =
+        new Identifier("personalbeacon", "textures/gui/window3.png");
+
+    // Colors — designed for the light-grey texture background
+    private static final int COLOR_ALLOWED    = 0xFF1A8A40;   // green — allowed / online
+    private static final int COLOR_BLOCKED    = 0xFF8B2222;
+    private static final int COLOR_OFFLINE    = 0xFFB03030;   // dim red — offline
+    private static final int COLOR_OWNER      = 0xFFAA7700;
+    private static final int COLOR_TEXT_MAIN  = 0xFF3D3D3D;
+    private static final int COLOR_TEXT_DIM   = 0xFF3D3D3D;
+    private static final int COLOR_TEXT_GOLD  = 0xFFAA7700;
 
     /** One row in the combined display list. */
     private static class DisplayEntry {
@@ -162,36 +171,56 @@ public class BeaconAccessScreen extends Screen {
 
     private void rebuildButtons() {
         this.clearChildren();
+        GuiLayoutConfig cfg = GuiLayoutConfig.get();
 
         // Close
+        GuiLayoutConfig.ButtonEntry cb = cfg.closeButton;
         this.addDrawableChild(ButtonWidget.builder(
             Text.translatable("personalbeacon.screen.close"), btn -> this.close())
-            .dimensions(panelX + panelW / 2 - 45, panelY + panelH - 28, 90, 20)
+            .dimensions(panelX + cb.offsetX, panelY + cb.offsetY, cb.width, cb.height)
+            .tooltip(Tooltip.of(Text.literal(cb.tooltip)))
             .build());
 
         if (isSingleplayer()) return;
 
+        // GUI Editor button — only in multiplayer, only when unlocked via /personalbeaconop edit
+        if (GuiEditorScreen.editorUnlocked && !isSingleplayer()) {
+            this.addDrawableChild(ButtonWidget.builder(Text.literal("⚙"),
+                b -> { if (this.client != null) this.client.setScreen(new GuiEditorScreen(this)); })
+                .dimensions(panelX + panelW - 22, panelY + 2, 20, 20)
+                .tooltip(Tooltip.of(Text.literal("Edit GUI Layout  (/personalbeaconop edit to toggle)")))
+                .build());
+        }
+
         // Empty state
         if (allowedPlayers.isEmpty() && !listExpanded) {
+            GuiLayoutConfig.ButtonEntry ab = cfg.addPlayersButton;
             this.addDrawableChild(ButtonWidget.builder(
                 Text.translatable("personalbeacon.screen.add_players"),
                 btn -> { listExpanded = true; rebuildDisplayList(); rebuildButtons(); })
-                .dimensions(panelX + panelW / 2 - 65, panelY + panelH / 2 - 10, 130, 22)
+                .dimensions(panelX + ab.offsetX, panelY + ab.offsetY, ab.width, ab.height)
+                .tooltip(Tooltip.of(Text.literal(ab.tooltip)))
                 .build());
             return;
         }
 
         // Scroll
-        int listStartY = panelY + 75;
-        int scrollBtnX = panelX + panelW - 22;
+        GuiLayoutConfig.ButtonEntry su = cfg.scrollUpButton;
+        GuiLayoutConfig.ButtonEntry sd = cfg.scrollDownButton;
         this.addDrawableChild(ButtonWidget.builder(Text.literal("▲"),
             btn -> { if (scrollOffset > 0) { scrollOffset--; rebuildButtons(); } })
-            .dimensions(scrollBtnX, listStartY, 18, 18).build());
+            .dimensions(panelX + su.offsetX, panelY + su.offsetY, su.width, su.height)
+            .tooltip(Tooltip.of(Text.literal(su.tooltip)))
+            .build());
         this.addDrawableChild(ButtonWidget.builder(Text.literal("▼"),
             btn -> { if (scrollOffset < Math.max(0, displayList.size() - VISIBLE_ROWS)) { scrollOffset++; rebuildButtons(); } })
-            .dimensions(scrollBtnX, listStartY + (VISIBLE_ROWS - 1) * ROW_HEIGHT, 18, 18).build());
+            .dimensions(panelX + sd.offsetX, panelY + sd.offsetY, sd.width, sd.height)
+            .tooltip(Tooltip.of(Text.literal(sd.tooltip)))
+            .build());
 
         // Player rows
+        GuiLayoutConfig.ToggleButtonEntry tb = cfg.toggleButton;
+        int listStartY = panelY + su.offsetY; // align with scroll-up button top
         for (int i = 0; i < VISIBLE_ROWS; i++) {
             int idx = scrollOffset + i;
             if (idx >= displayList.size()) break;
@@ -199,13 +228,15 @@ public class BeaconAccessScreen extends Screen {
             DisplayEntry entry = displayList.get(idx);
             int rowY = listStartY + i * ROW_HEIGHT;
             boolean canToggle = isSelfOwner() || ownerUUID == null;
+            String tipText = entry.allowed ? tb.tooltipAllowed : tb.tooltipBlocked;
 
             this.addDrawableChild(ButtonWidget.builder(
                 entry.allowed
                     ? Text.translatable("personalbeacon.screen.allowed")
                     : Text.translatable("personalbeacon.screen.blocked"),
                 b -> { if (canToggle) togglePlayer(entry.uuid, entry.name, !entry.allowed); })
-                .dimensions(panelX + panelW - 86, rowY + 3, 62, 18)
+                .dimensions(panelX + panelW - tb.offsetXFromRight, rowY + tb.rowOffsetY, tb.width, tb.height)
+                .tooltip(Tooltip.of(Text.literal(tipText)))
                 .build());
         }
     }
@@ -281,128 +312,179 @@ public class BeaconAccessScreen extends Screen {
         ctx.fill(x + w - 1, y, x + w, y + h, color);
     }
 
-    private void drawLeftAccent(DrawContext ctx, int x, int y, int h, int color) {
-        ctx.fill(x, y, x + 2, y + h, color);
+    /**
+     * Draws centered text scaled by {@code scale}.
+     * {@code centerX} / {@code topY} are normal screen-space coordinates.
+     * The text is horizontally centred at centerX and its top edge sits at topY.
+     */
+    private void drawScaledCenteredText(DrawContext ctx, Text text,
+                                        int centerX, int topY, float scale, int color) {
+        ctx.getMatrices().push();
+        ctx.getMatrices().translate(centerX, topY, 0);
+        ctx.getMatrices().scale(scale, scale, 1.0f);
+        // In scaled-matrix space: x=0 is the horizontal centre, y=0 is the text top
+        ctx.drawText(this.textRenderer, text, -this.textRenderer.getWidth(text) / 2, 0, color, false);
+        ctx.getMatrices().pop();
+    }
+
+    /** Centered text without shadow. */
+    private void drawCenteredText(DrawContext ctx, Text text, int centerX, int y, int color) {
+        ctx.drawText(this.textRenderer, text, centerX - this.textRenderer.getWidth(text) / 2, y, color, false);
+    }
+
+    /** Draws a PNG texture scaled to the given render size. */
+    private void drawWindowTexture(DrawContext ctx, Identifier texture,
+                                   int x, int y, int renderW, int renderH,
+                                   int texW, int texH) {
+        float sx = (float) renderW / texW;
+        float sy = (float) renderH / texH;
+        ctx.getMatrices().push();
+        ctx.getMatrices().translate(x, y, 0);
+        ctx.getMatrices().scale(sx, sy, 1.0f);
+        ctx.drawTexture(texture, 0, 0, 0, 0, texW, texH, texW, texH);
+        ctx.getMatrices().pop();
     }
 
     @Override
     public void render(DrawContext context, int mouseX, int mouseY, float delta) {
         this.renderBackground(context);
+        GuiLayoutConfig cfg = GuiLayoutConfig.get();
 
-        // Panel
-        fillRect(context, panelX, panelY, panelW, panelH, COLOR_BG_DARK);
-        drawBorder(context, panelX, panelY, panelW, panelH, COLOR_BORDER);
+        // ── Main background ───────────────────────────────────────────────────
+        float scaleX = (float) panelW / TEXTURE_W;
+        float scaleY = (float) panelH / TEXTURE_H;
+        context.getMatrices().push();
+        context.getMatrices().translate(panelX, panelY, 0);
+        context.getMatrices().scale(scaleX, scaleY, 1.0f);
+        context.drawTexture(GUI_TEXTURE, 0, 0, 0, 0, TEXTURE_W, TEXTURE_H, TEXTURE_W, TEXTURE_H);
+        context.getMatrices().pop();
 
-        // Header
-        int headerH = 38;
-        fillRect(context, panelX + 1, panelY + 1, panelW - 2, headerH, COLOR_HEADER_BG);
-        context.fill(panelX + 1, panelY + headerH, panelX + panelW - 1, panelY + headerH + 1, COLOR_BORDER);
-        drawLeftAccent(context, panelX + 1, panelY + 1, headerH, COLOR_BORDER);
+        // ── Window 1: header overlay ──────────────────────────────────────────
+        GuiLayoutConfig.WindowEntry w1 = cfg.window1;
+        drawWindowTexture(context, WINDOW1_TEXTURE,
+            panelX + w1.offsetX, panelY + w1.offsetY,
+            w1.width, w1.height, w1.textureWidth, w1.textureHeight);
 
-        context.drawCenteredTextWithShadow(this.textRenderer,
+        // ── Title + coordinates ───────────────────────────────────────────────
+        GuiLayoutConfig.TextEntry tt = cfg.titleText;
+        drawScaledCenteredText(context,
             Text.translatable("personalbeacon.screen.title"),
-            this.width / 2, panelY + 8, COLOR_TEXT_MAIN);
+            panelX + tt.offsetX, panelY + tt.offsetY, tt.scale, tt.color());
 
         String coordText = beaconPos != null
-            ? beaconPos.getX() + ",  " + beaconPos.getY() + ",  " + beaconPos.getZ()
+            ? beaconPos.getX() + ", " + beaconPos.getY() + ", " + beaconPos.getZ()
             : Text.translatable("personalbeacon.screen.loading").getString();
-        context.drawCenteredTextWithShadow(this.textRenderer,
-            Text.literal(coordText), this.width / 2, panelY + 22, COLOR_TEXT_DIM);
+        GuiLayoutConfig.TextEntry ct = cfg.coordsText;
+        drawScaledCenteredText(context,
+            Text.literal(coordText),
+            panelX + ct.offsetX, panelY + ct.offsetY, ct.scale, ct.color());
 
-        // Singleplayer
+        // ── Singleplayer ──────────────────────────────────────────────────────
         if (isSingleplayer()) {
-            fillRect(context, panelX + 10, panelY + 50, panelW - 20, 60, 0x441A0A00);
-            drawBorder(context, panelX + 10, panelY + 50, panelW - 20, 60, 0xFFAA4400);
-            context.drawCenteredTextWithShadow(this.textRenderer,
+            // Window 2 replaces the old orange bordered box
+            GuiLayoutConfig.WindowEntry w2 = cfg.window2;
+            drawWindowTexture(context, WINDOW2_TEXTURE,
+                panelX + w2.offsetX, panelY + w2.offsetY,
+                w2.width, w2.height, w2.textureWidth, w2.textureHeight);
+
+            GuiLayoutConfig.TextEntry st = cfg.singleplayerTitle;
+            drawCenteredText(context,
                 Text.translatable("personalbeacon.screen.singleplayer_title"),
-                this.width / 2, panelY + 63, COLOR_TEXT_GOLD);
-            context.drawCenteredTextWithShadow(this.textRenderer,
+                panelX + st.offsetX, panelY + st.offsetY, st.color());
+
+            GuiLayoutConfig.TextEntry sd = cfg.singleplayerDesc;
+            drawCenteredText(context,
                 Text.translatable("personalbeacon.screen.singleplayer_desc"),
-                this.width / 2, panelY + 80, COLOR_TEXT_DIM);
+                panelX + sd.offsetX, panelY + sd.offsetY, sd.color());
+
             super.render(context, mouseX, mouseY, delta);
             return;
         }
 
-        // Owner line
+        // ── Owner line ────────────────────────────────────────────────────────
         if (ownerUUID != null) {
             String ownerName = nameCache.getOrDefault(ownerUUID, "Unknown");
-            context.drawCenteredTextWithShadow(this.textRenderer,
-                Text.literal("★ Owner: " + ownerName),
-                this.width / 2, panelY + 44, COLOR_OWNER);
+            GuiLayoutConfig.TextEntry ot = cfg.ownerText;
+            drawCenteredText(context,
+                Text.translatable("personalbeacon.screen.owner", ownerName),
+                panelX + ot.offsetX, panelY + ot.offsetY, ot.color());
         }
 
-        // Empty state
+        // ── Empty state ───────────────────────────────────────────────────────
         if (allowedPlayers.isEmpty() && !listExpanded) {
             fillRect(context, panelX + 10, panelY + 55, panelW - 20, 48, 0x33003310);
             drawBorder(context, panelX + 10, panelY + 55, panelW - 20, 48, 0xFF224422);
-            context.drawCenteredTextWithShadow(this.textRenderer,
+            drawCenteredText(context,
                 Text.literal("✔  ").append(Text.translatable("personalbeacon.screen.no_restrictions")),
                 this.width / 2, panelY + 64, COLOR_ALLOWED);
-            context.drawCenteredTextWithShadow(this.textRenderer,
+            drawCenteredText(context,
                 Text.translatable("personalbeacon.screen.click_to_add"),
                 this.width / 2, panelY + 78, COLOR_TEXT_DIM);
             super.render(context, mouseX, mouseY, delta);
             return;
         }
 
-        // Column headers
-        int listStartY = panelY + 75;
-        context.drawTextWithShadow(this.textRenderer,
-            Text.translatable("personalbeacon.screen.column_player"),
-            panelX + 14, panelY + 62, 0xFF5588CC);
-        context.drawTextWithShadow(this.textRenderer,
-            Text.translatable("personalbeacon.screen.column_access"),
-            panelX + panelW - 86, panelY + 62, 0xFF5588CC);
-        context.fill(panelX + 8, panelY + 72, panelX + panelW - 8, panelY + 73, COLOR_BORDER_DIM);
+        // ── Column headers ────────────────────────────────────────────────────
+        GuiLayoutConfig.TextEntry cp = cfg.columnPlayer;
+        GuiLayoutConfig.TextEntry ca = cfg.columnAccess;
+        int listStartY = panelY + cfg.scrollUpButton.offsetY;
 
-        // Rows
+        context.drawText(this.textRenderer,
+            Text.translatable("personalbeacon.screen.column_player"),
+            panelX + cp.offsetX, panelY + cp.offsetY, cp.color(), false);
+        context.drawText(this.textRenderer,
+            Text.translatable("personalbeacon.screen.column_access"),
+            panelX + ca.offsetX, panelY + ca.offsetY, ca.color(), false);
+        context.fill(panelX + 8, panelY + 72, panelX + panelW - 8, panelY + 73, 0x44000000);
+
+        // ── Player rows ───────────────────────────────────────────────────────
         for (int i = 0; i < VISIBLE_ROWS; i++) {
             int idx = scrollOffset + i;
             if (idx >= displayList.size()) break;
 
             DisplayEntry entry = displayList.get(idx);
             int rowY = listStartY + i * ROW_HEIGHT;
-            int rowColor = (i % 2 == 0) ? COLOR_ROW_EVEN : COLOR_ROW_ODD;
 
-            fillRect(context, panelX + 8, rowY, panelW - 30, ROW_HEIGHT - 2, rowColor);
-            drawLeftAccent(context, panelX + 8, rowY, ROW_HEIGHT - 2,
-                entry.allowed ? COLOR_ALLOWED : COLOR_BLOCKED);
+            GuiLayoutConfig.WindowEntry w3 = cfg.window3;
+            drawWindowTexture(context, WINDOW3_TEXTURE,
+                panelX + w3.offsetX, rowY + w3.offsetY,
+                w3.width, w3.height, w3.textureWidth, w3.textureHeight);
 
-            // Name with status indicators
             String prefix = entry.isOwner ? "★ " : (idx + 1) + ". ";
-            String onlineTag = entry.online ? "" : " §(offline)";
             String nameLabel = prefix + entry.name;
 
             int nameColor;
-            if (entry.isOwner) nameColor = COLOR_OWNER;
-            else if (entry.allowed && entry.online) nameColor = COLOR_ALLOWED;
-            else if (entry.allowed && !entry.online) nameColor = COLOR_OFFLINE;
-            else nameColor = COLOR_TEXT_DIM;
+            if (entry.isOwner)                          nameColor = COLOR_OWNER;
+            else if (entry.allowed && entry.online)     nameColor = COLOR_ALLOWED;
+            else if (entry.allowed && !entry.online)    nameColor = COLOR_OFFLINE;
+            else                                        nameColor = COLOR_TEXT_DIM;
 
-            context.drawTextWithShadow(this.textRenderer,
-                nameLabel, panelX + 14, rowY + 7, nameColor);
+            context.drawText(this.textRenderer,
+                nameLabel, panelX + 14, rowY + 7, nameColor, false);
 
-            // Offline tag
-            if (!entry.online) {
-                context.drawTextWithShadow(this.textRenderer,
-                    "(offline)", panelX + 14 + this.textRenderer.getWidth(nameLabel) + 4,
-                    rowY + 7, 0xFF666666);
+            int statusLabelX = panelX + 14 + this.textRenderer.getWidth(nameLabel) + 4;
+            if (entry.online) {
+                context.drawText(this.textRenderer,
+                    "(online)", statusLabelX, rowY + 7, COLOR_ALLOWED, false);
+            } else {
+                context.drawText(this.textRenderer,
+                    "(offline)", statusLabelX, rowY + 7, COLOR_OFFLINE, false);
             }
         }
 
-        // Scroll counter
+        // ── Scroll counter ────────────────────────────────────────────────────
         if (displayList.size() > VISIBLE_ROWS) {
             String counter = (scrollOffset + 1) + "-"
                 + Math.min(scrollOffset + VISIBLE_ROWS, displayList.size())
                 + " / " + displayList.size();
-            context.drawCenteredTextWithShadow(this.textRenderer,
+            drawCenteredText(context,
                 Text.literal(counter), panelX + panelW - 12, panelY + panelH / 2, COLOR_TEXT_DIM);
         }
 
-        // Non-owner warning
+        // ── Non-owner warning ─────────────────────────────────────────────────
         if (ownerUUID != null && !isSelfOwner()) {
-            context.drawCenteredTextWithShadow(this.textRenderer,
-                Text.literal("⚠ View only — you are not the owner"),
+            drawCenteredText(context,
+                Text.translatable("personalbeacon.screen.view_only"),
                 this.width / 2, panelY + panelH - 40, 0xFFAA6600);
         }
 

@@ -1,71 +1,40 @@
-<<<<<<< HEAD
-# gradle
-
+# Gradle
 .gradle/
 build/
 out/
 classes/
+gradle-app.setting
+.gradletasknamecache
 
-# eclipse
+# Keep Gradle wrapper
+!gradle-wrapper.jar
+!gradle-wrapper.properties
 
-*.launch
-
-# idea
-
+# IntelliJ IDEA
 .idea/
 *.iml
 *.ipr
 *.iws
+*.launch
 
-# vscode
-
-.settings/
+# VSCode / Eclipse
 .vscode/
+.settings/
 bin/
 .classpath
 .project
 
-# macos
-
+# macOS
 *.DS_Store
 
-# fabric
-
+# Fabric / Minecraft dev
 run/
 
-# java
-
+# JVM crash logs
 hs_err_*.log
 replay_*.log
 *.hprof
 *.jfr
 
-.gradle/
-build/
-run/
-*.idea/
-*.iml
-out/
-=======
-.gradle
-**/build/
-!**/src/**/build/
-
-# Ignore Gradle GUI config
-gradle-app.setting
-
-# Avoid ignoring Gradle wrapper jar file (.jar files are usually ignored)
-!gradle-wrapper.jar
-
-# Avoid ignore Gradle wrappper properties
-!gradle-wrapper.properties
-
-# Cache of project
-.gradletasknamecache
-
-# Eclipse Gradle plugin generated files
-# Eclipse Core
-.project
-# JDT-specific (Eclipse Java Development Tools)
-.classpath
->>>>>>> 0d98bfe048c5ba63896264284cb5adda460bd70b
+# Claude Code
+.claude/

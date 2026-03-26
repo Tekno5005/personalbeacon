@@ -14,5 +14,7 @@
   "personalbeacon.screen.singleplayer_title": "⚠  Tek Oyunculu Mod",
   "personalbeacon.screen.singleplayer_desc": "Erisim kontrolu cok oyunculu sunucu gerektirir.",
   "personalbeacon.screen.scroll_up": "▲",
-  "personalbeacon.screen.scroll_down": "▼"
+  "personalbeacon.screen.scroll_down": "▼",
+  "personalbeacon.screen.owner": "★ Sahip: %s",
+  "personalbeacon.screen.view_only": "⚠ Yalnizca goruntuleme — bu beacon'in sahibi degilsiniz"
 }

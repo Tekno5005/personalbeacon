@@ -6,6 +6,7 @@ import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.fabricmc.fabric.api.networking.v1.PacketByteBufs;
 import net.minecraft.client.gui.screen.ingame.BeaconScreen;
 import net.minecraft.client.gui.screen.ingame.HandledScreen;
+import net.minecraft.client.gui.tooltip.Tooltip;
 import net.minecraft.client.gui.widget.ButtonWidget;
 import net.minecraft.entity.player.PlayerInventory;
 import net.minecraft.network.PacketByteBuf;
@@ -15,6 +16,9 @@ import net.minecraft.util.math.BlockPos;
 import net.tekno.personalbeacon.BeaconPosHolder;
 import net.tekno.personalbeacon.ModNetworking;
 import net.tekno.personalbeacon.client.BeaconAccessScreen;
+import net.tekno.personalbeacon.client.GuiEditorScreen;
+import net.tekno.personalbeacon.client.GuiLayoutConfig;
+import net.tekno.personalbeacon.client.TextureButtonWidget;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
@@ -31,8 +35,11 @@ public abstract class BeaconScreenMixin extends HandledScreen<BeaconScreenHandle
     @Inject(method = "init", at = @At("TAIL"))
     private void addAccessButton(CallbackInfo ci) {
         BeaconScreen self = (BeaconScreen)(Object) this;
+        GuiLayoutConfig.ButtonEntry manageBtn = GuiLayoutConfig.get().manageAccessButton;
 
-        this.addDrawableChild(ButtonWidget.builder(
+        // ── Manage Access button ──────────────────────────────────────────────
+        this.addDrawableChild(new TextureButtonWidget(
+            this.x + manageBtn.offsetX, this.y + manageBtn.offsetY, manageBtn.width, manageBtn.height,
             Text.translatable("personalbeacon.screen.manage_access"),
             btn -> {
                 if (this.client == null) return;
@@ -50,8 +57,17 @@ public abstract class BeaconScreenMixin extends HandledScreen<BeaconScreenHandle
                 }
 
                 this.client.setScreen(screen);
-            })
-            .dimensions(this.x, this.y - 24, 130, 20)
-            .build());
+            }));
+
+        // ── GUI Editor button — visible on this screen when editor is unlocked ─
+        // Lets the user reposition manageAccessButton while seeing it live.
+        if (GuiEditorScreen.editorUnlocked) {
+            this.addDrawableChild(ButtonWidget.builder(
+                Text.literal("⚙"),
+                b -> { if (this.client != null) this.client.setScreen(new GuiEditorScreen(self)); })
+                .dimensions(this.x + this.backgroundWidth - 20, this.y + 2, 18, 18)
+                .tooltip(Tooltip.of(Text.literal("Edit GUI Layout  (/personalbeaconop edit to toggle)")))
+                .build());
+        }
     }
 }
