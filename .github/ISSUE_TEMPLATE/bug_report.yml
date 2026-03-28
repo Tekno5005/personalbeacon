@@ -1,0 +1,98 @@
+name: Bug Report
+description: Report a bug or unexpected behavior in PersonalBeacon
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report a bug! Please fill out the form below as completely as possible.
+
+  - type: input
+    id: mod_version
+    attributes:
+      label: Mod Version
+      description: Which version of PersonalBeacon are you using?
+      placeholder: "e.g. 1.1.3"
+    validations:
+      required: true
+
+  - type: input
+    id: mc_version
+    attributes:
+      label: Minecraft Version
+      placeholder: "e.g. 1.20.1"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: mod_loader
+    attributes:
+      label: Mod Loader
+      options:
+        - Forge
+        - Fabric
+        - NeoForge
+    validations:
+      required: true
+
+  - type: input
+    id: loader_version
+    attributes:
+      label: Mod Loader Version
+      placeholder: "e.g. Forge 47.2.0"
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Bug Description
+      description: A clear description of what the bug is.
+      placeholder: What went wrong?
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to Reproduce
+      placeholder: |
+        1. Place a beacon
+        2. ...
+        3. See error
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected Behavior
+      placeholder: What should have happened?
+    validations:
+      required: true
+
+  - type: textarea
+    id: crash_log
+    attributes:
+      label: Crash Log or Error (if any)
+      description: Paste your crash log or error from `logs/latest.log`. Use https://mclo.gs to upload large logs.
+      render: text
+    validations:
+      required: false
+
+  - type: textarea
+    id: other_mods
+    attributes:
+      label: Other Mods Installed
+      description: List any other mods you have installed. This helps identify conflicts.
+      placeholder: "e.g. JEI 1.20.1, Waystones 1.20.1, ..."
+    validations:
+      required: false
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: Additional Context
+      description: Screenshots, videos, or anything else that might help.
+    validations:
+      required: false
