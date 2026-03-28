@@ -42,8 +42,8 @@ public class GuiLayoutConfig {
 
     /** window1.png — drawn over the header bar (title area). */
     public WindowEntry window1 = new WindowEntry(
-        0, -10,          // offsetX, offsetY  — flush with panel top-left
-        300, 41,       // render width, height in pixels
+        10, 10,        // offsetX, offsetY
+        280, 41,       // render width, height in pixels
         335, 46,       // actual PNG dimensions (do not change unless you swap the PNG)
         "Header overlay for the 'Personal Access Control' title. " +
         "offsetX/Y: position relative to panel top-left. " +
@@ -52,7 +52,7 @@ public class GuiLayoutConfig {
 
     /** window2.png — drawn in place of the old orange singleplayer info box. */
     public WindowEntry window2 = new WindowEntry(
-        10, 50,        // offsetX, offsetY
+        10, 85,        // offsetX, offsetY
         280, 50,       // render width, height
         335, 46,       // actual PNG dimensions
         "Single-player mode info panel. Replaces the old orange bordered box. " +
@@ -73,17 +73,17 @@ public class GuiLayoutConfig {
     // For left-aligned texts offsetX is the left edge.
 
     public TextEntry titleText = new TextEntry(
-        150, 13, 1.2f, "1A1A2E",
+        150, 19, 1.6f, "1A1A2E",
         "Main screen title — 'Personal Access Control' (centred). scale: text zoom factor."
     );
 
     public TextEntry coordsText = new TextEntry(
-        150, 28, 1.5f, "444455",
+        150, 36, 1.2f, "444455",
         "Beacon coordinates line below the title (centred)."
     );
 
     public TextEntry ownerText = new TextEntry(
-        150, 44, 1.0f, "AA7700",
+        150, 60, 1.0f, "AA7700",
         "Owner line — '★ Owner: <name>' (centred)."
     );
 
