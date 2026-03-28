@@ -5,6 +5,14 @@ Format follows [Semantic Versioning](https://semver.org/).
 
 -----
 
+## v1.1.2 — 2026-03-28
+
+### Fixed
+- **Broken texture on Manage Access button** — `Button.png` / `Button_selected.png` renamed to lowercase (`button.png` / `button_selected.png`) to match the `Identifier` paths in `TextureButtonWidget`. JAR files are case-sensitive (ZIP format), so the uppercase names caused missing textures in the released build while working fine in the dev environment (Windows case-insensitive FS).
+- **GUI layout reverting to defaults on fresh installs** — Default values in `GuiLayoutConfig.java` were out of sync with the tuned layout. Updated all defaults to match: `columnPlayer` scale, `columnAccess` offsetX, `addPlayersButton` offsetX, `scrollUpButton/Down` offsetX, `toggleButton` dimensions, `manageAccessButton` position and size, `singleplayerTitle/Desc` offsets and colors.
+
+-----
+
 ## v1.1.1 — 2026-03-28
 
 ### Changed

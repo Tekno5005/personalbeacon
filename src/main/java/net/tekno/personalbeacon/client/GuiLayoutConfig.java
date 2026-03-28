@@ -88,22 +88,22 @@ public class GuiLayoutConfig {
     );
 
     public TextEntry singleplayerTitle = new TextEntry(
-        150, 58, 1.0f, "AA7700",
+        150, 104, 1.0f, "AA7700",
         "Title text inside the singleplayer window2 (centred)."
     );
 
     public TextEntry singleplayerDesc = new TextEntry(
-        150, 80, 1.0f, "8B1A1A",
+        150, 115, 1.0f, "444455",
         "Description text inside the singleplayer window2 (centred)."
     );
 
     public TextEntry columnPlayer = new TextEntry(
-        14, 62, 1.0f, "444455",
+        14, 62, 0.6f, "444455",
         "Column header 'Player' (left-aligned, offsetX from panel left)."
     );
 
     public TextEntry columnAccess = new TextEntry(
-        214, 62, 1.0f, "444455",
+        217, 62, 1.0f, "444455",
         "Column header 'Access' (left-aligned, offsetX from panel left)."
     );
 
@@ -115,17 +115,17 @@ public class GuiLayoutConfig {
     );
 
     public ButtonEntry addPlayersButton = new ButtonEntry(
-        83, 110, 130, 22,
+        85, 110, 130, 22,
         "Open the player list to add / manage access"
     );
 
     public ButtonEntry scrollUpButton = new ButtonEntry(
-        278, 75, 18, 18,
+        275, 75, 18, 18,
         "Scroll the player list up"
     );
 
     public ButtonEntry scrollDownButton = new ButtonEntry(
-        278, 219, 18, 18,
+        275, 210, 18, 18,
         "Scroll the player list down"
     );
 
@@ -135,7 +135,7 @@ public class GuiLayoutConfig {
      * rowOffsetY       = vertical offset inside each row.
      */
     public ToggleButtonEntry toggleButton = new ToggleButtonEntry(
-        86, 3, 62, 18,
+        93, 3, 58, 16,
         "Click to block this player",
         "Click to allow this player"
     );
@@ -146,7 +146,7 @@ public class GuiLayoutConfig {
      * Default position: right side of the player-inventory area.
      */
     public ButtonEntry manageAccessButton = new ButtonEntry(
-        177, 162, 22, 22,
+        12, 10, 11, 11,
         "Manage who can use this beacon"
     );
 
