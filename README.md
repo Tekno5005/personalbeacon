@@ -122,7 +122,7 @@ The mod behavior can be modified via `config/personalbeacon.json`:
 
 ## AI
 
-  * Used AI to code thıs project, lıkely 90 percent of it.
+  * AI was used in 90% of the coding for this project.
 
 -----
 
