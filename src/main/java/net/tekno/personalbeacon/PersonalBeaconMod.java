@@ -39,6 +39,7 @@ public class PersonalBeaconMod implements ModInitializer {
             BlockPos pos = hitResult.getBlockPos();
             if (world.getBlockState(pos).isOf(Blocks.BEACON)) {
                 if (player instanceof ServerPlayerEntity serverPlayer) {
+                    LOGGER.debug("Player {} right-clicked beacon at {}", serverPlayer.getName().getString(), pos);
                     world.getServer().execute(() -> {
                         // Singleplayer: if beacon has no restrictions, auto-add the player
                         // Prevents softlock where nobody receives effects

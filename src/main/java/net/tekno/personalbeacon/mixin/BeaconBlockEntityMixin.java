@@ -62,8 +62,8 @@ public class BeaconBlockEntityMixin {
 
             boolean allowed = manager.isAllowed(pos, player.getUuid());
 
-            PersonalBeaconMod.LOGGER.info(
-                "[PersonalBeacon] Player {} (UUID: {}) at beacon {} — allowed: {}",
+            PersonalBeaconMod.LOGGER.debug(
+                "Effect tick — player {} ({}) at beacon {} — allowed: {}",
                 player.getName().getString(), player.getUuid(), pos, allowed
             );
 

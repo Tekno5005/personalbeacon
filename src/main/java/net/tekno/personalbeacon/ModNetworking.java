@@ -70,6 +70,8 @@ public class ModNetworking {
         // C2S: client opened BeaconAccessScreen, wants current data
         ServerPlayNetworking.registerGlobalReceiver(C2S_REQUEST_SYNC, (server, player, handler, buf, responseSender) -> {
             BlockPos beaconPos = buf.readBlockPos();
+            PersonalBeaconMod.LOGGER.debug("Sync requested by {} for beacon at {}",
+                player.getName().getString(), beaconPos);
             server.execute(() -> sendSyncPacket(player, beaconPos));
         });
     }
@@ -120,11 +122,14 @@ public class ModNetworking {
             buf.writeString(entry.getValue());
         }
 
+        PersonalBeaconMod.LOGGER.debug("Sending sync to {} — beacon {}, {} allowed, {} name-cache entries",
+            player.getName().getString(), beaconPos, allowed.size(), nameCache.size());
         ServerPlayNetworking.send(player, S2C_SYNC_ACCESS, buf);
     }
 
     public static void sendTestModeToggle(MinecraftServer server) {
         testModeEnabled = !testModeEnabled;
+        PersonalBeaconMod.LOGGER.info("Test mode toggled — now {}", testModeEnabled ? "ON" : "OFF");
         PacketByteBuf buf = PacketByteBufs.create();
         buf.writeBoolean(testModeEnabled);
         for (ServerPlayerEntity player : server.getPlayerManager().getPlayerList()) {
