@@ -47,8 +47,12 @@ public class BeaconAccessScreen extends Screen {
 
     private boolean listExpanded = false;
     private int scrollOffset = 0;
-    private static final int VISIBLE_ROWS = 7;
+    private int visibleRows = 6;
+    private float panelScale = 1.0f;
     private static final int ROW_HEIGHT = 24;
+
+    /** Scale a value from the 300×240 design space to the actual panel size. */
+    private int sc(int v) { return Math.round(v * panelScale); }
 
     private final Queue<AbstractMap.SimpleEntry<UUID, Boolean>> pendingToggles = new LinkedList<>();
 
@@ -154,10 +158,18 @@ public class BeaconAccessScreen extends Screen {
 
     @Override
     protected void init() {
-        panelW = 300;
-        panelH = 240;
-        panelX = this.width / 2 - panelW / 2;
+        // Scale down from the 300×240 design size to fit within the screen (20 px margin each side)
+        int availW = this.width  - 40;
+        int availH = this.height - 40;
+        panelScale = Math.min(1.0f, Math.min(availW / 300f, availH / 240f));
+        panelW = Math.round(300 * panelScale);
+        panelH = Math.round(240 * panelScale);
+        panelX = this.width  / 2 - panelW / 2;
         panelY = this.height / 2 - panelH / 2;
+
+        GuiLayoutConfig layoutCfg = GuiLayoutConfig.get();
+        visibleRows = Math.max(2,
+            (layoutCfg.scrollDownButton.offsetY - layoutCfg.scrollUpButton.offsetY) / ROW_HEIGHT);
 
         if (this.client != null && this.client.getNetworkHandler() != null) {
             onlinePlayers = new ArrayList<>(this.client.getNetworkHandler().getPlayerList());
@@ -177,7 +189,7 @@ public class BeaconAccessScreen extends Screen {
         GuiLayoutConfig.ButtonEntry cb = cfg.closeButton;
         this.addDrawableChild(ButtonWidget.builder(
             Text.translatable("personalbeacon.screen.close"), btn -> this.close())
-            .dimensions(panelX + cb.offsetX, panelY + cb.offsetY, cb.width, cb.height)
+            .dimensions(panelX + sc(cb.offsetX), panelY + sc(cb.offsetY), sc(cb.width), sc(cb.height))
             .tooltip(Tooltip.of(Text.literal(cb.tooltip)))
             .build());
 
@@ -187,7 +199,7 @@ public class BeaconAccessScreen extends Screen {
         if (GuiEditorScreen.editorUnlocked && !isSingleplayer()) {
             this.addDrawableChild(ButtonWidget.builder(Text.literal("⚙"),
                 b -> { if (this.client != null) this.client.setScreen(new GuiEditorScreen(this)); })
-                .dimensions(panelX + panelW - 22, panelY + 2, 20, 20)
+                .dimensions(panelX + panelW - sc(22), panelY + sc(2), sc(20), sc(20))
                 .tooltip(Tooltip.of(Text.literal("Edit GUI Layout  (/personalbeaconop edit to toggle)")))
                 .build());
         }
@@ -198,7 +210,7 @@ public class BeaconAccessScreen extends Screen {
             this.addDrawableChild(ButtonWidget.builder(
                 Text.translatable("personalbeacon.screen.add_players"),
                 btn -> { listExpanded = true; rebuildDisplayList(); rebuildButtons(); })
-                .dimensions(panelX + ab.offsetX, panelY + ab.offsetY, ab.width, ab.height)
+                .dimensions(panelX + sc(ab.offsetX), panelY + sc(ab.offsetY), sc(ab.width), sc(ab.height))
                 .tooltip(Tooltip.of(Text.literal(ab.tooltip)))
                 .build());
             return;
@@ -209,24 +221,24 @@ public class BeaconAccessScreen extends Screen {
         GuiLayoutConfig.ButtonEntry sd = cfg.scrollDownButton;
         this.addDrawableChild(ButtonWidget.builder(Text.literal("▲"),
             btn -> { if (scrollOffset > 0) { scrollOffset--; rebuildButtons(); } })
-            .dimensions(panelX + su.offsetX, panelY + su.offsetY, su.width, su.height)
+            .dimensions(panelX + sc(su.offsetX), panelY + sc(su.offsetY), sc(su.width), sc(su.height))
             .tooltip(Tooltip.of(Text.literal(su.tooltip)))
             .build());
         this.addDrawableChild(ButtonWidget.builder(Text.literal("▼"),
-            btn -> { if (scrollOffset < Math.max(0, displayList.size() - VISIBLE_ROWS)) { scrollOffset++; rebuildButtons(); } })
-            .dimensions(panelX + sd.offsetX, panelY + sd.offsetY, sd.width, sd.height)
+            btn -> { if (scrollOffset < Math.max(0, displayList.size() - visibleRows)) { scrollOffset++; rebuildButtons(); } })
+            .dimensions(panelX + sc(sd.offsetX), panelY + sc(sd.offsetY), sc(sd.width), sc(sd.height))
             .tooltip(Tooltip.of(Text.literal(sd.tooltip)))
             .build());
 
         // Player rows
         GuiLayoutConfig.ToggleButtonEntry tb = cfg.toggleButton;
-        int listStartY = panelY + su.offsetY; // align with scroll-up button top
-        for (int i = 0; i < VISIBLE_ROWS; i++) {
+        int listStartY = panelY + sc(su.offsetY);
+        for (int i = 0; i < visibleRows; i++) {
             int idx = scrollOffset + i;
             if (idx >= displayList.size()) break;
 
             DisplayEntry entry = displayList.get(idx);
-            int rowY = listStartY + i * ROW_HEIGHT;
+            int rowY = listStartY + i * sc(ROW_HEIGHT);
             boolean canToggle = isSelfOwner() || ownerUUID == null;
             String tipText = entry.allowed ? tb.tooltipAllowed : tb.tooltipBlocked;
 
@@ -235,7 +247,7 @@ public class BeaconAccessScreen extends Screen {
                     ? Text.translatable("personalbeacon.screen.allowed")
                     : Text.translatable("personalbeacon.screen.blocked"),
                 b -> { if (canToggle) togglePlayer(entry.uuid, entry.name, !entry.allowed); })
-                .dimensions(panelX + panelW - tb.offsetXFromRight, rowY + tb.rowOffsetY, tb.width, tb.height)
+                .dimensions(panelX + panelW - sc(tb.offsetXFromRight), rowY + sc(tb.rowOffsetY), sc(tb.width), sc(tb.height))
                 .tooltip(Tooltip.of(Text.literal(tipText)))
                 .build());
         }
@@ -278,7 +290,7 @@ public class BeaconAccessScreen extends Screen {
 
         while (!pendingToggles.isEmpty()) {
             var entry = pendingToggles.poll();
-            PersonalBeaconMod.LOGGER.info("[PersonalBeacon] Processing queued toggle for {}", entry.getKey());
+            PersonalBeaconMod.LOGGER.debug("Processing queued toggle for {}", entry.getKey());
             String name = nameCache.getOrDefault(entry.getKey(), entry.getKey().toString().substring(0, 8));
             sendToggle(entry.getKey(), name, entry.getValue());
         }
@@ -362,14 +374,14 @@ public class BeaconAccessScreen extends Screen {
         // ── Window 1: header overlay ──────────────────────────────────────────
         GuiLayoutConfig.WindowEntry w1 = cfg.window1;
         drawWindowTexture(context, WINDOW1_TEXTURE,
-            panelX + w1.offsetX, panelY + w1.offsetY,
-            w1.width, w1.height, w1.textureWidth, w1.textureHeight);
+            panelX + sc(w1.offsetX), panelY + sc(w1.offsetY),
+            sc(w1.width), sc(w1.height), w1.textureWidth, w1.textureHeight);
 
         // ── Title + coordinates ───────────────────────────────────────────────
         GuiLayoutConfig.TextEntry tt = cfg.titleText;
         drawScaledCenteredText(context,
             Text.translatable("personalbeacon.screen.title"),
-            panelX + tt.offsetX, panelY + tt.offsetY, tt.scale, tt.color());
+            panelX + sc(tt.offsetX), panelY + sc(tt.offsetY), tt.scale * panelScale, tt.color());
 
         String coordText = beaconPos != null
             ? beaconPos.getX() + ", " + beaconPos.getY() + ", " + beaconPos.getZ()
@@ -377,25 +389,25 @@ public class BeaconAccessScreen extends Screen {
         GuiLayoutConfig.TextEntry ct = cfg.coordsText;
         drawScaledCenteredText(context,
             Text.literal(coordText),
-            panelX + ct.offsetX, panelY + ct.offsetY, ct.scale, ct.color());
+            panelX + sc(ct.offsetX), panelY + sc(ct.offsetY), ct.scale * panelScale, ct.color());
 
         // ── Singleplayer ──────────────────────────────────────────────────────
         if (isSingleplayer()) {
             // Window 2 replaces the old orange bordered box
             GuiLayoutConfig.WindowEntry w2 = cfg.window2;
             drawWindowTexture(context, WINDOW2_TEXTURE,
-                panelX + w2.offsetX, panelY + w2.offsetY,
-                w2.width, w2.height, w2.textureWidth, w2.textureHeight);
+                panelX + sc(w2.offsetX), panelY + sc(w2.offsetY),
+                sc(w2.width), sc(w2.height), w2.textureWidth, w2.textureHeight);
 
             GuiLayoutConfig.TextEntry st = cfg.singleplayerTitle;
             drawCenteredText(context,
                 Text.translatable("personalbeacon.screen.singleplayer_title"),
-                panelX + st.offsetX, panelY + st.offsetY, st.color());
+                panelX + sc(st.offsetX), panelY + sc(st.offsetY), st.color());
 
             GuiLayoutConfig.TextEntry sd = cfg.singleplayerDesc;
             drawCenteredText(context,
                 Text.translatable("personalbeacon.screen.singleplayer_desc"),
-                panelX + sd.offsetX, panelY + sd.offsetY, sd.color());
+                panelX + sc(sd.offsetX), panelY + sc(sd.offsetY), sd.color());
 
             super.render(context, mouseX, mouseY, delta);
             return;
@@ -407,19 +419,19 @@ public class BeaconAccessScreen extends Screen {
             GuiLayoutConfig.TextEntry ot = cfg.ownerText;
             drawCenteredText(context,
                 Text.translatable("personalbeacon.screen.owner", ownerName),
-                panelX + ot.offsetX, panelY + ot.offsetY, ot.color());
+                panelX + sc(ot.offsetX), panelY + sc(ot.offsetY), ot.color());
         }
 
         // ── Empty state ───────────────────────────────────────────────────────
         if (allowedPlayers.isEmpty() && !listExpanded) {
-            fillRect(context, panelX + 10, panelY + 55, panelW - 20, 48, 0x33003310);
-            drawBorder(context, panelX + 10, panelY + 55, panelW - 20, 48, 0xFF224422);
+            fillRect(context, panelX + sc(10), panelY + sc(55), panelW - sc(20), sc(48), 0x33003310);
+            drawBorder(context, panelX + sc(10), panelY + sc(55), panelW - sc(20), sc(48), 0xFF224422);
             drawCenteredText(context,
                 Text.literal("✔  ").append(Text.translatable("personalbeacon.screen.no_restrictions")),
-                this.width / 2, panelY + 64, COLOR_ALLOWED);
+                this.width / 2, panelY + sc(64), COLOR_ALLOWED);
             drawCenteredText(context,
                 Text.translatable("personalbeacon.screen.click_to_add"),
-                this.width / 2, panelY + 78, COLOR_TEXT_DIM);
+                this.width / 2, panelY + sc(78), COLOR_TEXT_DIM);
             super.render(context, mouseX, mouseY, delta);
             return;
         }
@@ -427,28 +439,28 @@ public class BeaconAccessScreen extends Screen {
         // ── Column headers ────────────────────────────────────────────────────
         GuiLayoutConfig.TextEntry cp = cfg.columnPlayer;
         GuiLayoutConfig.TextEntry ca = cfg.columnAccess;
-        int listStartY = panelY + cfg.scrollUpButton.offsetY;
+        int listStartY = panelY + sc(cfg.scrollUpButton.offsetY);
 
         context.drawText(this.textRenderer,
             Text.translatable("personalbeacon.screen.column_player"),
-            panelX + cp.offsetX, panelY + cp.offsetY, cp.color(), false);
+            panelX + sc(cp.offsetX), panelY + sc(cp.offsetY), cp.color(), false);
         context.drawText(this.textRenderer,
             Text.translatable("personalbeacon.screen.column_access"),
-            panelX + ca.offsetX, panelY + ca.offsetY, ca.color(), false);
-        context.fill(panelX + 8, panelY + 72, panelX + panelW - 8, panelY + 73, 0x44000000);
+            panelX + sc(ca.offsetX), panelY + sc(ca.offsetY), ca.color(), false);
+        context.fill(panelX + sc(8), panelY + sc(72), panelX + panelW - sc(8), panelY + sc(73), 0x44000000);
 
         // ── Player rows ───────────────────────────────────────────────────────
-        for (int i = 0; i < VISIBLE_ROWS; i++) {
+        for (int i = 0; i < visibleRows; i++) {
             int idx = scrollOffset + i;
             if (idx >= displayList.size()) break;
 
             DisplayEntry entry = displayList.get(idx);
-            int rowY = listStartY + i * ROW_HEIGHT;
+            int rowY = listStartY + i * sc(ROW_HEIGHT);
 
             GuiLayoutConfig.WindowEntry w3 = cfg.window3;
             drawWindowTexture(context, WINDOW3_TEXTURE,
-                panelX + w3.offsetX, rowY + w3.offsetY,
-                w3.width, w3.height, w3.textureWidth, w3.textureHeight);
+                panelX + sc(w3.offsetX), rowY + sc(w3.offsetY),
+                sc(w3.width), sc(w3.height), w3.textureWidth, w3.textureHeight);
 
             String prefix = entry.isOwner ? "★ " : (idx + 1) + ". ";
             String nameLabel = prefix + entry.name;
@@ -460,32 +472,32 @@ public class BeaconAccessScreen extends Screen {
             else                                        nameColor = COLOR_TEXT_DIM;
 
             context.drawText(this.textRenderer,
-                nameLabel, panelX + 14, rowY + 7, nameColor, false);
+                nameLabel, panelX + sc(14), rowY + sc(7), nameColor, false);
 
-            int statusLabelX = panelX + 14 + this.textRenderer.getWidth(nameLabel) + 4;
+            int statusLabelX = panelX + sc(14) + this.textRenderer.getWidth(nameLabel) + sc(4);
             if (entry.online) {
                 context.drawText(this.textRenderer,
-                    "(online)", statusLabelX, rowY + 7, COLOR_ALLOWED, false);
+                    "(online)", statusLabelX, rowY + sc(7), COLOR_ALLOWED, false);
             } else {
                 context.drawText(this.textRenderer,
-                    "(offline)", statusLabelX, rowY + 7, COLOR_OFFLINE, false);
+                    "(offline)", statusLabelX, rowY + sc(7), COLOR_OFFLINE, false);
             }
         }
 
         // ── Scroll counter ────────────────────────────────────────────────────
-        if (displayList.size() > VISIBLE_ROWS) {
+        if (displayList.size() > visibleRows) {
             String counter = (scrollOffset + 1) + "-"
-                + Math.min(scrollOffset + VISIBLE_ROWS, displayList.size())
+                + Math.min(scrollOffset + visibleRows, displayList.size())
                 + " / " + displayList.size();
             drawCenteredText(context,
-                Text.literal(counter), panelX + panelW - 12, panelY + panelH / 2, COLOR_TEXT_DIM);
+                Text.literal(counter), panelX + panelW - sc(12), panelY + panelH / 2, COLOR_TEXT_DIM);
         }
 
         // ── Non-owner warning ─────────────────────────────────────────────────
         if (ownerUUID != null && !isSelfOwner()) {
             drawCenteredText(context,
                 Text.translatable("personalbeacon.screen.view_only"),
-                this.width / 2, panelY + panelH - 40, 0xFFAA6600);
+                this.width / 2, panelY + panelH - sc(40), 0xFFAA6600);
         }
 
         super.render(context, mouseX, mouseY, delta);
