@@ -3,6 +3,8 @@ package net.tekno.personalbeacon.client;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import net.fabricmc.loader.api.FabricLoader;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.*;
 import java.nio.file.*;
@@ -23,6 +25,7 @@ public class GuiLayoutConfig {
     // ─── singleton ────────────────────────────────────────────────────────────
     private static GuiLayoutConfig INSTANCE = null;
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
+    private static final Logger LOGGER = LoggerFactory.getLogger("personalbeacon");
 
     /** Returns the loaded config (loads on first call). */
     public static GuiLayoutConfig get() {
@@ -247,7 +250,10 @@ public class GuiLayoutConfig {
         INSTANCE = cfg;
         try (Writer w = Files.newBufferedWriter(configPath())) {
             GSON.toJson(cfg, w);
-        } catch (Exception ignored) {}
+            LOGGER.debug("GUI layout config saved to {}", configPath());
+        } catch (Exception e) {
+            LOGGER.warn("Failed to save GUI layout config to {}", configPath(), e);
+        }
     }
 
     private static GuiLayoutConfig loadOrCreate() {
@@ -255,16 +261,23 @@ public class GuiLayoutConfig {
         if (Files.exists(path)) {
             try (Reader r = Files.newBufferedReader(path)) {
                 GuiLayoutConfig cfg = GSON.fromJson(r, GuiLayoutConfig.class);
-                if (cfg != null) return cfg;
-            } catch (Exception ignored) {
-                // corrupted file — fall through to defaults
+                if (cfg != null) {
+                    LOGGER.debug("GUI layout config loaded from {}", path);
+                    return cfg;
+                }
+                LOGGER.warn("GUI layout config at {} parsed as null, using defaults", path);
+            } catch (Exception e) {
+                LOGGER.warn("Failed to read GUI layout config at {} (corrupted?), using defaults", path, e);
             }
         }
         // Write defaults so the user can see and edit the file
         GuiLayoutConfig defaults = new GuiLayoutConfig();
         try (Writer w = Files.newBufferedWriter(path)) {
             GSON.toJson(defaults, w);
-        } catch (Exception ignored) {}
+            LOGGER.info("GUI layout config created with defaults at {}", path);
+        } catch (Exception e) {
+            LOGGER.warn("Failed to write default GUI layout config to {}", path, e);
+        }
         return defaults;
     }
 }

@@ -6,6 +6,8 @@ import net.minecraft.server.world.ServerWorld;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.PersistentState;
 import net.minecraft.world.PersistentStateManager;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Map;
 import java.util.Set;
@@ -14,6 +16,7 @@ import java.util.UUID;
 public class BeaconAccessManager extends PersistentState {
 
     private static final String SAVE_KEY = "personalbeacon_access";
+    private static final Logger LOGGER = LoggerFactory.getLogger("personalbeacon");
     private final BeaconAccessData data = new BeaconAccessData();
 
     public static BeaconAccessManager fromNbt(NbtCompound nbt) {
@@ -53,15 +56,16 @@ public class BeaconAccessManager extends PersistentState {
         // If no owner yet, the first person to add a restriction becomes the owner
         if (!data.hasOwner(pos)) {
             data.setOwner(pos, playerUUID);
-            PersonalBeaconMod.LOGGER.info("[PersonalBeacon] {} is now owner of beacon at {}",
-                playerName, pos);
+            LOGGER.info("{} is now owner of beacon at {}", playerName, pos);
         }
         data.addPlayer(pos, playerUUID, playerName);
+        LOGGER.debug("Added {} ({}) to beacon at {}", playerName, playerUUID, pos);
         markDirty();
     }
 
     public void removePlayer(BlockPos pos, UUID playerUUID) {
         data.removePlayer(pos, playerUUID);
+        LOGGER.debug("Removed {} from beacon at {}", playerUUID, pos);
         markDirty();
     }
 
@@ -79,6 +83,7 @@ public class BeaconAccessManager extends PersistentState {
 
     public void removeBeacon(BlockPos pos) {
         data.removeBeacon(pos);
+        LOGGER.debug("Removed all access data for beacon at {}", pos);
         markDirty();
     }
 
@@ -97,6 +102,7 @@ public class BeaconAccessManager extends PersistentState {
 
     public void setOwner(BlockPos pos, UUID uuid) {
         data.setOwner(pos, uuid);
+        LOGGER.debug("Set owner of beacon at {} to {}", pos, uuid);
         markDirty();
     }
 

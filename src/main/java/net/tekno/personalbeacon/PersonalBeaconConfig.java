@@ -57,16 +57,16 @@ public class PersonalBeaconConfig {
         if (Files.exists(CONFIG_PATH)) {
             try (Reader reader = Files.newBufferedReader(CONFIG_PATH)) {
                 instance = GSON.fromJson(reader, PersonalBeaconConfig.class);
-                LOGGER.info("[PersonalBeacon] Config loaded from {}", CONFIG_PATH);
+                LOGGER.info("Config loaded from {}", CONFIG_PATH);
             } catch (IOException e) {
-                LOGGER.error("[PersonalBeacon] Failed to read config, using defaults.", e);
+                LOGGER.error("Failed to read config, using defaults.", e);
                 instance = new PersonalBeaconConfig();
             }
         } else {
             // First run — write defaults
             instance = new PersonalBeaconConfig();
             save();
-            LOGGER.info("[PersonalBeacon] Config created at {}", CONFIG_PATH);
+            LOGGER.info("Config created at {}", CONFIG_PATH);
         }
     }
 
@@ -74,7 +74,7 @@ public class PersonalBeaconConfig {
         try (Writer writer = Files.newBufferedWriter(CONFIG_PATH)) {
             GSON.toJson(instance, writer);
         } catch (IOException e) {
-            LOGGER.error("[PersonalBeacon] Failed to save config.", e);
+            LOGGER.error("Failed to save config.", e);
         }
     }
 }

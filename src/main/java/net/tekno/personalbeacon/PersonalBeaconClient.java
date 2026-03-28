@@ -10,11 +10,15 @@ import net.minecraft.text.Text;
 import net.minecraft.util.math.BlockPos;
 import net.tekno.personalbeacon.client.BeaconAccessScreen;
 import net.tekno.personalbeacon.client.GuiEditorScreen;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.*;
 
 @Environment(EnvType.CLIENT)
 public class PersonalBeaconClient implements ClientModInitializer {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger("personalbeacon");
 
     @Override
     public void onInitializeClient() {
@@ -70,6 +74,9 @@ public class PersonalBeaconClient implements ClientModInitializer {
                 nameCache.put(uuid, name);
             }
 
+            LOGGER.debug("Received sync for beacon {} — {} allowed, {} name-cache entries",
+                beaconPos, allowedCount, cacheCount);
+
             client.execute(() -> {
                 if (client.currentScreen instanceof BeaconAccessScreen screen) {
                     screen.receiveData(beaconPos, ownerUUID, allowed, nameCache);
@@ -80,6 +87,7 @@ public class PersonalBeaconClient implements ClientModInitializer {
         // S2C: test mode toggle
         ClientPlayNetworking.registerGlobalReceiver(ModNetworking.S2C_TEST_MODE, (client, handler, buf, responseSender) -> {
             boolean enabled = buf.readBoolean();
+            LOGGER.debug("Received test mode toggle — now {}", enabled ? "ON" : "OFF");
             client.execute(() -> {
                 BeaconAccessScreen.setTestMode(enabled);
                 if (client.currentScreen instanceof BeaconAccessScreen screen) {

@@ -5,6 +5,20 @@ Format follows [Semantic Versioning](https://semver.org/).
 
 -----
 
+## v1.1.1 — 2026-03-28
+
+### Changed
+- **Responsive GUI layout** — `BeaconAccessScreen` panel now scales down proportionally on screens smaller than 340×280 px. All button positions, texture sizes, row heights, and text positions use a `panelScale` factor computed from available screen space. On standard resolutions behaviour is identical to before.
+- **Dynamic visible rows** — Row count is now derived from the configured scroll button positions instead of a hardcoded constant (`VISIBLE_ROWS = 7`), so it stays correct when the GUI layout is customised.
+- **Logging levels** — Per-tick player effect checks demoted from `INFO` to `DEBUG` (were firing every few seconds per player). Packet flow, data mutations, and beacon interactions now log at `DEBUG`. Silent `catch (Exception ignored)` blocks in `GuiLayoutConfig` replaced with `WARN` logging including the exception.
+- **Log prefix cleanup** — Redundant `[PersonalBeacon]` prefix removed from log messages (the SLF4J logger name already identifies the mod).
+
+### Added
+- **Unit tests** — `BeaconAccessDataTest` covers 15 scenarios: unrestricted baseline, `addPlayer`/`removePlayer`/`removeBeacon` lifecycle, owner management, player name cache, `getAllowedPlayers` immutability, full NBT round-trips (empty, single beacon, multiple beacons, owner, offline name cache, negative coordinates), and `fromNbt` malformed UUID handling.
+- **JUnit 5** (`junit-jupiter 5.10.2`) added to `testImplementation`; run with `./gradlew test`.
+
+-----
+
 ## v1.1.0 — 2026-03-26
 
 ### Added
