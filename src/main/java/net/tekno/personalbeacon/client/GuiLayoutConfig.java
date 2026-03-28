@@ -62,7 +62,7 @@ public class GuiLayoutConfig {
     /** window3.png — drawn as the background for each player card row. */
     public WindowEntry window3 = new WindowEntry(
         8, 0,          // offsetX (from panel left), offsetY (from row top)
-        282, 22,       // render width, height (panel width - 30, row height - 2)
+        265, 22,       // render width, height
         335, 46,       // actual PNG dimensions
         "Player card row background. offsetX from panel left, offsetY from row top. " +
         "width/height: rendered size per row."
