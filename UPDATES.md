@@ -5,6 +5,13 @@ Format follows [Semantic Versioning](https://semver.org/).
 
 -----
 
+## v1.1.3 — 2026-03-28
+
+### Fixed
+- **GUI layout defaults fully synced** — `titleText`, `coordsText`, `ownerText` offsets and scales, `window1`/`window2` positions, and `window3` width were still using stale hardcoded values in `GuiLayoutConfig.java`. All defaults now match the tuned layout so fresh installs no longer require a manual config file.
+
+-----
+
 ## v1.1.2 — 2026-03-28
 
 ### Fixed
