@@ -87,6 +87,12 @@ public class GuiLayoutConfig {
         "Owner line — '★ Owner: <name>' (centred)."
     );
 
+    /** One-line context description shown below the header — 'Only listed players receive effects.' */
+    public TextEntry descText = new TextEntry(
+        150, 52, 0.85f, "666666",
+        "Context description line shown below the title header (centred). Explains what the list does."
+    );
+
     public TextEntry singleplayerTitle = new TextEntry(
         150, 104, 1.0f, "AA7700",
         "Title text inside the singleplayer window2 (centred)."
@@ -136,8 +142,62 @@ public class GuiLayoutConfig {
      */
     public ToggleButtonEntry toggleButton = new ToggleButtonEntry(
         93, 3, 58, 16,
-        "Click to block this player",
-        "Click to allow this player"
+        "Receiving effects — click to remove from list",
+        "Not receiving effects — click to add to list"
+    );
+
+    /**
+     * Per-row owner/co-manager toggle button (★/☆), positioned just left of the access toggle.
+     * offsetXFromRight = 115 places it 4 px left of toggleButton (offsetXFromRight=93, width=58 → right edge at panelW-35;
+     * star button width=16, so left edge at panelW-115).
+     * tooltipAllowed = shown when player IS an owner (click removes).
+     * tooltipBlocked = shown when player is NOT an owner (click adds).
+     */
+    public ToggleButtonEntry ownerToggleButton = new ToggleButtonEntry(
+        115, 3, 16, 16,
+        "Co-manager — can add/remove players. Click to remove.",
+        "Make co-manager — this player can also manage the access list."
+    );
+
+    // ─── empty state (no-restrictions) box and text ───────────────────────────
+
+    /**
+     * Background box shown in the empty state (no restrictions set).
+     * Uses offsetX/Y/width/height from ButtonEntry (tooltip is unused here).
+     */
+    public ButtonEntry emptyStateBox = new ButtonEntry(
+        10, 55, 280, 48,
+        ""
+    );
+
+    /** "✔ No restrictions" text inside the empty state box (centred). */
+    public TextEntry emptyStateTitle = new TextEntry(
+        150, 64, 1.0f, "1A8A40",
+        "Empty-state 'No restrictions' text (centred at offsetX)."
+    );
+
+    /** "Click to add players" text below the title in the empty state box (centred). */
+    public TextEntry emptyStateDesc = new TextEntry(
+        150, 78, 1.0f, "3D3D3D",
+        "Empty-state 'Click to add' description text (centred at offsetX)."
+    );
+
+    /**
+     * "Open to All" button — shown at the bottom-left when the beacon is restricted.
+     * Clicking it removes all restrictions and returns to the unrestricted view.
+     */
+    public ButtonEntry openToAllButton = new ButtonEntry(
+        10, 212, 90, 20,
+        "Remove all restrictions — everyone receives effects"
+    );
+
+    /**
+     * "Restrict Access" button — shown in the centre of the unrestricted view.
+     * Clicking it enters restricted-list mode so the owner can start adding players.
+     */
+    public ButtonEntry restrictAccessButton = new ButtonEntry(
+        85, 140, 130, 22,
+        "Start restricting — only listed players will receive effects"
     );
 
     /**

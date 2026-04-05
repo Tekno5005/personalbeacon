@@ -16,8 +16,11 @@ public class BeaconAccessData {
     // beacon pos -> set of allowed UUIDs
     private final Map<BlockPos, Set<UUID>> allowedPlayers = new HashMap<>();
 
-    // beacon pos -> owner UUID (first player to restrict it, or manually set)
-    private final Map<BlockPos, UUID> beaconOwners = new HashMap<>();
+    // beacon pos -> set of owner UUIDs (co-managers; always includes the primary owner)
+    private final Map<BlockPos, Set<UUID>> beaconOwners = new HashMap<>();
+
+    // beacon pos -> primary owner UUID (the very first owner; can never be removed)
+    private final Map<BlockPos, UUID> primaryOwners = new HashMap<>();
 
     // UUID -> last known player name (for offline display)
     private final Map<UUID, String> playerNames = new HashMap<>();
@@ -58,32 +61,82 @@ public class BeaconAccessData {
     public void removeBeacon(BlockPos pos) {
         allowedPlayers.remove(pos);
         beaconOwners.remove(pos);
+        primaryOwners.remove(pos);
+    }
+
+    /** Remove all access restrictions for a beacon — keeps owner data intact. */
+    public void unrestrictBeacon(BlockPos pos) {
+        allowedPlayers.remove(pos);
     }
 
     // -------------------------------------------------------
-    // Beacon owner
+    // Beacon owners (multi-owner / co-manager support)
     // -------------------------------------------------------
 
-    /** Set owner — called when first player restricts a beacon. */
+    /**
+     * Set the primary owner — called when the very first player restricts a beacon.
+     * Also adds them to the owner set automatically.
+     */
     public void setOwner(BlockPos pos, UUID uuid) {
-        beaconOwners.put(pos, uuid);
+        primaryOwners.put(pos, uuid);
+        beaconOwners.computeIfAbsent(pos, k -> new HashSet<>()).add(uuid);
     }
 
-    /** Get owner UUID, or null if none set. */
+    /** Add a co-manager (does NOT change the primary owner). */
+    public void addOwner(BlockPos pos, UUID uuid) {
+        beaconOwners.computeIfAbsent(pos, k -> new HashSet<>()).add(uuid);
+    }
+
+    /**
+     * Remove a co-manager. The primary owner can never be removed.
+     * Returns false if the uuid is the primary owner (removal blocked).
+     */
+    public boolean removeOwner(BlockPos pos, UUID uuid) {
+        UUID primary = primaryOwners.get(pos);
+        if (uuid.equals(primary)) return false;
+        Set<UUID> owners = beaconOwners.get(pos);
+        if (owners != null) {
+            owners.remove(uuid);
+            if (owners.isEmpty()) beaconOwners.remove(pos);
+        }
+        return true;
+    }
+
+    /** Returns true if uuid is in the owner set for this beacon. */
+    public boolean isOwner(BlockPos pos, UUID uuid) {
+        Set<UUID> owners = beaconOwners.get(pos);
+        return owners != null && owners.contains(uuid);
+    }
+
+    /** Returns all current owners (including primary), or empty set. */
+    public Set<UUID> getOwners(BlockPos pos) {
+        Set<UUID> owners = beaconOwners.get(pos);
+        if (owners == null) return Collections.emptySet();
+        return Collections.unmodifiableSet(owners);
+    }
+
+    /** Returns the primary (first) owner UUID, or null. */
+    public UUID getPrimaryOwner(BlockPos pos) {
+        return primaryOwners.get(pos);
+    }
+
+    /** @deprecated Use {@link #getPrimaryOwner(BlockPos)} instead. */
+    @Deprecated
     public UUID getOwner(BlockPos pos) {
-        return beaconOwners.get(pos);
+        return getPrimaryOwner(pos);
     }
 
     public boolean hasOwner(BlockPos pos) {
-        return beaconOwners.containsKey(pos);
+        return primaryOwners.containsKey(pos);
     }
 
     // -------------------------------------------------------
     // Player name cache
     // -------------------------------------------------------
 
-    public void cachePlayerName(UUID uuid, String name) {
-        playerNames.put(uuid, name);
+    /** Caches the name. Returns true if the value was new or changed. */
+    public boolean cachePlayerName(UUID uuid, String name) {
+        return !name.equals(playerNames.put(uuid, name));
     }
 
     /** Returns cached name, or shortened UUID if unknown. */
@@ -110,25 +163,44 @@ public class BeaconAccessData {
     public NbtCompound toNbt() {
         NbtCompound root = new NbtCompound();
 
-        // Allowed players list
+        // Union of all beacon positions — prevents data loss when allowedPlayers is empty
+        // but owner data still exists (e.g. all allowed players were removed).
+        Set<BlockPos> allPositions = new HashSet<>();
+        allPositions.addAll(allowedPlayers.keySet());
+        allPositions.addAll(beaconOwners.keySet());
+        allPositions.addAll(primaryOwners.keySet());
+
         NbtList beaconList = new NbtList();
-        for (Map.Entry<BlockPos, Set<UUID>> entry : allowedPlayers.entrySet()) {
+        for (BlockPos pos : allPositions) {
             NbtCompound beaconEntry = new NbtCompound();
-            BlockPos pos = entry.getKey();
             beaconEntry.putInt("x", pos.getX());
             beaconEntry.putInt("y", pos.getY());
             beaconEntry.putInt("z", pos.getZ());
 
+            // Allowed players (may be empty)
+            Set<UUID> players = allowedPlayers.get(pos);
             NbtList playerList = new NbtList();
-            for (UUID uuid : entry.getValue()) {
-                playerList.add(NbtString.of(uuid.toString()));
+            if (players != null) {
+                for (UUID uuid : players) {
+                    playerList.add(NbtString.of(uuid.toString()));
+                }
             }
             beaconEntry.put("players", playerList);
 
-            // Owner
-            UUID owner = beaconOwners.get(pos);
-            if (owner != null) {
-                beaconEntry.putString("owner", owner.toString());
+            // Primary owner
+            UUID primary = primaryOwners.get(pos);
+            if (primary != null) {
+                beaconEntry.putString("owner", primary.toString());
+            }
+
+            // Co-owners (all owners including primary)
+            Set<UUID> owners = beaconOwners.get(pos);
+            if (owners != null && !owners.isEmpty()) {
+                NbtList ownerList = new NbtList();
+                for (UUID ownerUuid : owners) {
+                    ownerList.add(NbtString.of(ownerUuid.toString()));
+                }
+                beaconEntry.put("coOwners", ownerList);
             }
 
             beaconList.add(beaconEntry);
@@ -151,6 +223,7 @@ public class BeaconAccessData {
     public void fromNbt(NbtCompound nbt) {
         allowedPlayers.clear();
         beaconOwners.clear();
+        primaryOwners.clear();
         playerNames.clear();
 
         NbtList beaconList = nbt.getList("beacons", 10);
@@ -169,11 +242,27 @@ public class BeaconAccessData {
             }
             if (!uuids.isEmpty()) allowedPlayers.put(pos, uuids);
 
+            // Primary owner (backward-compatible "owner" field)
             if (entry.contains("owner")) {
                 try {
-                    beaconOwners.put(pos, UUID.fromString(entry.getString("owner")));
+                    UUID primary = UUID.fromString(entry.getString("owner"));
+                    primaryOwners.put(pos, primary);
+                    beaconOwners.computeIfAbsent(pos, k -> new HashSet<>()).add(primary);
                 } catch (IllegalArgumentException e) {
                     LOGGER.warn("Skipping malformed owner UUID for beacon at {}", pos);
+                }
+            }
+
+            // Co-owners list (may include primary; we just add all to owner set)
+            if (entry.contains("coOwners")) {
+                NbtList ownerList = entry.getList("coOwners", 8);
+                for (int j = 0; j < ownerList.size(); j++) {
+                    try {
+                        UUID ownerUuid = UUID.fromString(ownerList.getString(j));
+                        beaconOwners.computeIfAbsent(pos, k -> new HashSet<>()).add(ownerUuid);
+                    } catch (IllegalArgumentException e) {
+                        LOGGER.warn("Skipping malformed coOwner UUID for beacon at {}", pos);
+                    }
                 }
             }
         }

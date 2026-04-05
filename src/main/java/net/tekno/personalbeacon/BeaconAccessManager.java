@@ -87,23 +87,69 @@ public class BeaconAccessManager extends PersistentState {
         markDirty();
     }
 
+    /** Remove all player restrictions — beacon becomes open to everyone. Owner data is preserved. */
+    public void unrestrictBeacon(BlockPos pos) {
+        data.unrestrictBeacon(pos);
+        LOGGER.info("Beacon at {} unrestricted — all players now receive effects", pos);
+        markDirty();
+    }
+
     // -------------------------------------------------------
     // Owner
     // -------------------------------------------------------
 
+    public boolean hasOwner(BlockPos pos) {
+        return data.hasOwner(pos);
+    }
+
+    public UUID getPrimaryOwner(BlockPos pos) {
+        return data.getPrimaryOwner(pos);
+    }
+
+    /** @deprecated Use {@link #getPrimaryOwner(BlockPos)} instead. */
+    @Deprecated
     public UUID getOwner(BlockPos pos) {
-        return data.getOwner(pos);
+        return getPrimaryOwner(pos);
     }
 
     public boolean isOwner(BlockPos pos, UUID uuid) {
-        UUID owner = data.getOwner(pos);
-        return owner != null && owner.equals(uuid);
+        return data.isOwner(pos, uuid);
+    }
+
+    public Set<UUID> getOwners(BlockPos pos) {
+        return data.getOwners(pos);
     }
 
     public void setOwner(BlockPos pos, UUID uuid) {
         data.setOwner(pos, uuid);
-        LOGGER.debug("Set owner of beacon at {} to {}", pos, uuid);
+        LOGGER.debug("Set primary owner of beacon at {} to {}", pos, uuid);
         markDirty();
+    }
+
+    /**
+     * Add a co-manager to the beacon. Does not change primary owner.
+     * Returns false if the beacon has no primary owner yet (can't add co-owner without primary).
+     */
+    public boolean addOwner(BlockPos pos, UUID uuid) {
+        if (!data.hasOwner(pos)) return false;
+        data.addOwner(pos, uuid);
+        LOGGER.debug("Added co-owner {} to beacon at {}", uuid, pos);
+        markDirty();
+        return true;
+    }
+
+    /**
+     * Remove a co-manager. Primary owner can never be removed (returns false).
+     */
+    public boolean removeOwner(BlockPos pos, UUID uuid) {
+        boolean removed = data.removeOwner(pos, uuid);
+        if (removed) {
+            LOGGER.debug("Removed co-owner {} from beacon at {}", uuid, pos);
+            markDirty();
+        } else {
+            LOGGER.debug("Cannot remove primary owner {} from beacon at {}", uuid, pos);
+        }
+        return removed;
     }
 
     // -------------------------------------------------------
@@ -111,8 +157,7 @@ public class BeaconAccessManager extends PersistentState {
     // -------------------------------------------------------
 
     public void cachePlayerName(UUID uuid, String name) {
-        data.cachePlayerName(uuid, name);
-        markDirty();
+        if (data.cachePlayerName(uuid, name)) markDirty();
     }
 
     public String getPlayerName(UUID uuid) {

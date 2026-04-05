@@ -16,5 +16,21 @@
   "personalbeacon.screen.scroll_up": "▲",
   "personalbeacon.screen.scroll_down": "▼",
   "personalbeacon.screen.owner": "★ Proprietaire : %s",
-  "personalbeacon.screen.view_only": "⚠ Lecture seule — vous n'etes pas le proprietaire"
+  "personalbeacon.screen.view_only": "⚠ Lecture seule — vous n'etes pas le proprietaire",
+  "personalbeacon.screen.primary_owner": "★ Premier proprietaire — ne peut pas etre retire",
+  "personalbeacon.screen.desc": "Seuls les joueurs listes recoivent les effets du beacon.",
+  "personalbeacon.screen.owner_pending": "Traitement en cours...",
+  "personalbeacon.screen.no_players_nearby": "Aucun joueur a proximite",
+  "personalbeacon.screen.no_players_hint": "Les joueurs du serveur apparaitront ici.",
+  "personalbeacon.feedback.added": "✔ %s ajoute — recevra les effets",
+  "personalbeacon.feedback.removed": "✘ %s retire — effets bloques",
+  "personalbeacon.feedback.owner_added": "★ %s est maintenant co-gestionnaire",
+  "personalbeacon.feedback.owner_removed": "☆ %s retire comme co-gestionnaire",
+  "personalbeacon.feedback.no_permission": "⚠ Vous n'avez pas la permission de gerer ce beacon",
+  "personalbeacon.screen.owner_always_allowed": "Les proprietaires recoivent toujours les effets du beacon",
+  "personalbeacon.screen.unrestricted_title": "✔  Ouvert a tous",
+  "personalbeacon.screen.unrestricted_desc": "Tous les joueurs recoivent les effets de ce beacon.",
+  "personalbeacon.screen.open_to_all": "Ouvrir a tous",
+  "personalbeacon.screen.restrict_access": "Restreindre l'acces",
+  "personalbeacon.feedback.unrestricted": "✔ Beacon ouvert a tous les joueurs"
 }

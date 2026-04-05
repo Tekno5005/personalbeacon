@@ -52,9 +52,16 @@ public class PersonalBeaconClient implements ClientModInitializer {
         ClientPlayNetworking.registerGlobalReceiver(ModNetworking.S2C_SYNC_ACCESS, (client, handler, buf, responseSender) -> {
             BlockPos beaconPos = buf.readBlockPos();
 
-            // Owner
-            boolean hasOwner = buf.readBoolean();
-            UUID ownerUUID = hasOwner ? buf.readUuid() : null;
+            // Primary owner
+            boolean hasPrimaryOwner = buf.readBoolean();
+            UUID primaryOwnerUUID = hasPrimaryOwner ? buf.readUuid() : null;
+
+            // All owners (co-managers including primary)
+            int ownerCount = buf.readInt();
+            Set<UUID> ownerUUIDs = new HashSet<>();
+            for (int i = 0; i < ownerCount; i++) {
+                ownerUUIDs.add(buf.readUuid());
+            }
 
             // Allowed players
             int allowedCount = buf.readInt();
@@ -74,12 +81,12 @@ public class PersonalBeaconClient implements ClientModInitializer {
                 nameCache.put(uuid, name);
             }
 
-            LOGGER.debug("Received sync for beacon {} — {} allowed, {} name-cache entries",
-                beaconPos, allowedCount, cacheCount);
+            LOGGER.debug("Received sync for beacon {} — {} allowed, {} owners, {} name-cache entries",
+                beaconPos, allowedCount, ownerCount, cacheCount);
 
             client.execute(() -> {
                 if (client.currentScreen instanceof BeaconAccessScreen screen) {
-                    screen.receiveData(beaconPos, ownerUUID, allowed, nameCache);
+                    screen.receiveData(beaconPos, primaryOwnerUUID, ownerUUIDs, allowed, nameCache);
                 }
             });
         });

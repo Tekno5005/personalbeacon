@@ -5,6 +5,34 @@ Format follows [Semantic Versioning](https://semver.org/).
 
 -----
 
+## v1.2.0 — 2026-04-05
+
+### Added
+- **"Open to All" / "Restrict Access" flow** — Beacon screen now has two distinct states. When unrestricted, `window2` is shown with an *"Open to Everyone"* message and a **Restrict Access** button. When restricted, an **Open to All** button appears at the bottom-left; clicking it sends the new `C2S_UNRESTRICT` packet, clears all restrictions on the server, and returns to the unrestricted view.
+- **Action bar feedback** — Every access toggle (✔/✘) and confirmed owner change (★/☆) now displays a short message in the native Minecraft action bar (above the hotbar) so players always know their action was applied.
+- **Owner toggle pending state** — Clicking ★/☆ immediately disables the button and shows `…` while the server processes the request. The button updates to its final state only after the S2C confirmation arrives, eliminating the "did it work?" confusion.
+- **Context description line** — A subtle one-line hint *"Only listed players receive this beacon's effects."* is now shown below the header on every multiplayer screen, giving first-time users immediate context.
+- **Empty list message** — When no players are present in the display list (no online players and no allowed players), the scroll buttons are hidden and a friendly *"No players nearby / Server players will appear here."* message is shown instead.
+- **Improved tooltips** — Access toggle now reads *"Receiving effects — click to remove"* / *"Not receiving effects — click to add"*. Owner star reads *"Co-manager — can add/remove players. Click to remove."* / *"Make co-manager — this player can also manage the access list."*
+- **`C2S_UNRESTRICT` network packet** — New server-side handler validates distance and owner permissions before clearing `allowedPlayers` for the beacon and sending a fresh sync.
+- **`unrestrictBeacon()` API** — Added to both `BeaconAccessData` and `BeaconAccessManager`. Clears the allowed-player list while preserving owner data.
+- New `openToAllButton` and `restrictAccessButton` entries in `GuiLayoutConfig` (fully configurable via `personalbeacon_gui_layout.json`).
+- New translation keys in all four languages (EN / TR / ES / FR): `unrestricted_title`, `unrestricted_desc`, `open_to_all`, `restrict_access`, `owner_pending`, `no_players_nearby`, `no_players_hint`, `owner_always_allowed`, and all `personalbeacon.feedback.*` keys.
+
+### Changed
+- **Owner rows — Allow/Block button disabled** — Rows belonging to an owner (primary or co-manager) now render the access toggle in a permanently disabled state with the tooltip *"Owners always receive beacon effects"*, preventing accidental removal of their access.
+- **`getOwner()` deprecated** — Both `BeaconAccessData.getOwner()` and `BeaconAccessManager.getOwner()` are now `@Deprecated` and delegate to `getPrimaryOwner()`. Existing call sites still work; migrate to `getPrimaryOwner()` going forward.
+
+### Fixed
+- **`BeaconAccessData.toNbt()` data loss** — When all allowed players were removed from a beacon, `allowedPlayers.remove(pos)` left the entry absent from the map. `toNbt()` only iterated `allowedPlayers`, so owner and co-manager data were silently lost on server restart. Fixed by iterating over the union of `allowedPlayers`, `beaconOwners`, and `primaryOwners` key sets.
+- **Thread safety — `testModeEnabled`** — Field was a plain `boolean` read from the client thread and written from the server thread. Changed to `volatile boolean`.
+- **Unnecessary `markDirty()` on name cache** — `sendSyncPacket()` called `manager.cachePlayerName()` for every online player on every beacon-screen open, triggering a disk write each time regardless of whether any name had changed. `BeaconAccessData.cachePlayerName()` now returns `true` only when the stored value actually changed; `BeaconAccessManager` calls `markDirty()` conditionally.
+- **`Math.sqrt()` in distance check** — `isPlayerNearBeacon()` called `Math.sqrt(squaredDist) <= maxDist`, which is equivalent to `squaredDist <= maxDist * maxDist` but wastes a square-root computation per packet. Replaced with the squared comparison.
+- **`isOnline()` O(n²) complexity** — `rebuildDisplayList()` called `isOnline(uuid)` for every allowed player, and each call iterated the full `NetworkHandler.getPlayerList()`. A single `Set<UUID>` is now built once before the loop, reducing the check to O(1) per entry.
+- **`listExpanded` dead code removed** — The field was set to `true` unconditionally in `init()`, making all `!listExpanded` branches unreachable. The field, the empty-state box render block, and the now-unused `addPlayersButton` branch in `rebuildButtons()` have been removed.
+
+-----
+
 ## v1.1.3 — 2026-03-28
 
 ### Fixed

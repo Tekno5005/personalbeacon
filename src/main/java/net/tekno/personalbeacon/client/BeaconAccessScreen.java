@@ -11,6 +11,7 @@ import net.minecraft.client.gui.tooltip.Tooltip;
 import net.minecraft.client.gui.widget.ButtonWidget;
 import net.minecraft.client.network.PlayerListEntry;
 import net.minecraft.network.PacketByteBuf;
+import net.minecraft.server.integrated.IntegratedServer;
 import net.minecraft.text.Text;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.math.BlockPos;
@@ -31,7 +32,12 @@ public class BeaconAccessScreen extends Screen {
     public void onTestModeChanged() { rebuildButtons(); }
 
     private BlockPos beaconPos = null;
-    private UUID ownerUUID = null;
+
+    // Primary (first) owner — can never be removed
+    private UUID primaryOwnerUUID = null;
+
+    // All current owners (co-managers, includes primary)
+    private Set<UUID> ownerUUIDs = new HashSet<>();
 
     // UUID -> name for allowed players (includes offline)
     private Map<UUID, String> allowedPlayers = new LinkedHashMap<>();
@@ -45,7 +51,6 @@ public class BeaconAccessScreen extends Screen {
     // Combined display list: allowed (with offline) + online not yet allowed
     private List<DisplayEntry> displayList = new ArrayList<>();
 
-    private boolean listExpanded = false;
     private int scrollOffset = 0;
     private int visibleRows = 6;
     private float panelScale = 1.0f;
@@ -55,6 +60,13 @@ public class BeaconAccessScreen extends Screen {
     private int sc(int v) { return Math.round(v * panelScale); }
 
     private final Queue<AbstractMap.SimpleEntry<UUID, Boolean>> pendingToggles = new LinkedList<>();
+
+    // UUIDs whose owner-toggle is in-flight (waiting for S2C confirmation)
+    private final Set<UUID> pendingOwnerChanges = new HashSet<>();
+
+    // True when the user clicked "Restrict Access" and wants to see/edit the player list
+    // even while allowedPlayers is still empty (beacon not yet restricted on server)
+    private boolean showingRestrictedView = false;
 
     private int panelX, panelY, panelW, panelH;
 
@@ -86,13 +98,16 @@ public class BeaconAccessScreen extends Screen {
         final boolean online;
         final boolean allowed;
         final boolean isOwner;
+        final boolean isPrimaryOwner;
 
-        DisplayEntry(UUID uuid, String name, boolean online, boolean allowed, boolean isOwner) {
+        DisplayEntry(UUID uuid, String name, boolean online, boolean allowed,
+                     boolean isOwner, boolean isPrimaryOwner) {
             this.uuid = uuid;
             this.name = name;
             this.online = online;
             this.allowed = allowed;
             this.isOwner = isOwner;
+            this.isPrimaryOwner = isPrimaryOwner;
         }
     }
 
@@ -101,20 +116,26 @@ public class BeaconAccessScreen extends Screen {
         this.parent = parent;
     }
 
+    // ── Issue 1 fix: return false when LAN is open ────────────────────────────
     private boolean isSingleplayer() {
         if (testMode) return false;
-        return this.client != null && this.client.isInSingleplayer();
+        if (this.client == null) return false;
+        if (!this.client.isInSingleplayer()) return false;
+        // IntegratedServer.getServerPort() returns -1 when not open to LAN,
+        // and the actual LAN port (> 0) when "Open to LAN" has been used.
+        IntegratedServer srv = this.client.getServer();
+        if (srv == null) return true;
+        return srv.getServerPort() < 0;
     }
 
     private boolean isSelfOwner() {
-        if (ownerUUID == null) return true; // no owner yet — anyone can manage
+        if (ownerUUIDs.isEmpty()) return true; // no owners yet — anyone can manage
         if (this.client == null) return false;
         String selfName = this.client.getSession().getUsername();
-        // Find self UUID in online list
         if (this.client.getNetworkHandler() == null) return false;
         for (PlayerListEntry entry : this.client.getNetworkHandler().getPlayerList()) {
             if (entry.getProfile().getName().equals(selfName)) {
-                return entry.getProfile().getId().equals(ownerUUID);
+                return ownerUUIDs.contains(entry.getProfile().getId());
             }
         }
         return false;
@@ -124,15 +145,21 @@ public class BeaconAccessScreen extends Screen {
     private void rebuildDisplayList() {
         displayList.clear();
 
+        // Build online set once for O(1) lookup instead of O(n) per entry
+        Set<UUID> onlineSet = new HashSet<>();
+        if (onlinePlayers != null) {
+            for (PlayerListEntry e : onlinePlayers) onlineSet.add(e.getProfile().getId());
+        }
+
         Set<UUID> seen = new LinkedHashSet<>();
 
         // 1. Allowed players first (may include offline)
         for (Map.Entry<UUID, String> entry : allowedPlayers.entrySet()) {
             UUID uuid = entry.getKey();
             String name = entry.getValue();
-            boolean online = isOnline(uuid);
-            boolean isOwner = uuid.equals(ownerUUID);
-            displayList.add(new DisplayEntry(uuid, name, online, true, isOwner));
+            boolean isOwner = ownerUUIDs.contains(uuid);
+            boolean isPrimary = uuid.equals(primaryOwnerUUID);
+            displayList.add(new DisplayEntry(uuid, name, onlineSet.contains(uuid), true, isOwner, isPrimary));
             seen.add(uuid);
         }
 
@@ -142,18 +169,11 @@ public class BeaconAccessScreen extends Screen {
                 UUID uuid = entry.getProfile().getId();
                 if (seen.contains(uuid)) continue;
                 String name = entry.getProfile().getName();
-                boolean isOwner = uuid.equals(ownerUUID);
-                displayList.add(new DisplayEntry(uuid, name, true, false, isOwner));
+                boolean isOwner = ownerUUIDs.contains(uuid);
+                boolean isPrimary = uuid.equals(primaryOwnerUUID);
+                displayList.add(new DisplayEntry(uuid, name, true, false, isOwner, isPrimary));
             }
         }
-    }
-
-    private boolean isOnline(UUID uuid) {
-        if (this.client == null || this.client.getNetworkHandler() == null) return false;
-        for (PlayerListEntry e : this.client.getNetworkHandler().getPlayerList()) {
-            if (e.getProfile().getId().equals(uuid)) return true;
-        }
-        return false;
     }
 
     @Override
@@ -176,7 +196,7 @@ public class BeaconAccessScreen extends Screen {
             onlinePlayers.sort((a, b) ->
                 a.getProfile().getName().compareToIgnoreCase(b.getProfile().getName()));
         }
-        if (!allowedPlayers.isEmpty()) listExpanded = true;
+
         rebuildDisplayList();
         rebuildButtons();
     }
@@ -204,17 +224,34 @@ public class BeaconAccessScreen extends Screen {
                 .build());
         }
 
-        // Empty state
-        if (allowedPlayers.isEmpty() && !listExpanded) {
-            GuiLayoutConfig.ButtonEntry ab = cfg.addPlayersButton;
-            this.addDrawableChild(ButtonWidget.builder(
-                Text.translatable("personalbeacon.screen.add_players"),
-                btn -> { listExpanded = true; rebuildDisplayList(); rebuildButtons(); })
-                .dimensions(panelX + sc(ab.offsetX), panelY + sc(ab.offsetY), sc(ab.width), sc(ab.height))
-                .tooltip(Tooltip.of(Text.literal(ab.tooltip)))
-                .build());
+        // ── Unrestricted state: show "Restrict Access" button, skip player list ─
+        if (!showingRestrictedView && allowedPlayers.isEmpty()) {
+            boolean canManage = isSelfOwner() || ownerUUIDs.isEmpty();
+            GuiLayoutConfig.ButtonEntry ra = cfg.restrictAccessButton;
+            ButtonWidget raBtn = ButtonWidget.builder(
+                Text.translatable("personalbeacon.screen.restrict_access"),
+                b -> { showingRestrictedView = true; rebuildDisplayList(); rebuildButtons(); })
+                .dimensions(panelX + sc(ra.offsetX), panelY + sc(ra.offsetY), sc(ra.width), sc(ra.height))
+                .tooltip(Tooltip.of(Text.literal(ra.tooltip)))
+                .build();
+            if (!canManage) raBtn.active = false;
+            this.addDrawableChild(raBtn);
             return;
         }
+
+        // ── "Open to All" button — visible when in restricted view ────────────
+        if (isSelfOwner() || ownerUUIDs.isEmpty()) {
+            GuiLayoutConfig.ButtonEntry oa = cfg.openToAllButton;
+            this.addDrawableChild(ButtonWidget.builder(
+                Text.translatable("personalbeacon.screen.open_to_all"),
+                b -> sendUnrestrict())
+                .dimensions(panelX + sc(oa.offsetX), panelY + sc(oa.offsetY), sc(oa.width), sc(oa.height))
+                .tooltip(Tooltip.of(Text.literal(oa.tooltip)))
+                .build());
+        }
+
+        // Empty list — skip scroll/row buttons; render() will show a hint instead
+        if (displayList.isEmpty()) return;
 
         // Scroll
         GuiLayoutConfig.ButtonEntry su = cfg.scrollUpButton;
@@ -230,26 +267,72 @@ public class BeaconAccessScreen extends Screen {
             .tooltip(Tooltip.of(Text.literal(sd.tooltip)))
             .build());
 
-        // Player rows
-        GuiLayoutConfig.ToggleButtonEntry tb = cfg.toggleButton;
+        // Player rows — access toggle + owner star button
+        GuiLayoutConfig.ToggleButtonEntry tb  = cfg.toggleButton;
+        GuiLayoutConfig.ToggleButtonEntry otb = cfg.ownerToggleButton;
         int listStartY = panelY + sc(su.offsetY);
+
         for (int i = 0; i < visibleRows; i++) {
             int idx = scrollOffset + i;
             if (idx >= displayList.size()) break;
 
             DisplayEntry entry = displayList.get(idx);
             int rowY = listStartY + i * sc(ROW_HEIGHT);
-            boolean canToggle = isSelfOwner() || ownerUUID == null;
-            String tipText = entry.allowed ? tb.tooltipAllowed : tb.tooltipBlocked;
+            boolean canToggle = isSelfOwner() || ownerUUIDs.isEmpty();
 
-            this.addDrawableChild(ButtonWidget.builder(
+            // ── Access toggle button (ALLOWED / BLOCKED) ──────────────────────
+            // Owners are always allowed and cannot be toggled
+            boolean isOwnerRow = entry.isOwner;
+            String tipText = isOwnerRow
+                ? Text.translatable("personalbeacon.screen.owner_always_allowed").getString()
+                : (entry.allowed ? tb.tooltipAllowed : tb.tooltipBlocked);
+            ButtonWidget toggleBtn = ButtonWidget.builder(
                 entry.allowed
                     ? Text.translatable("personalbeacon.screen.allowed")
                     : Text.translatable("personalbeacon.screen.blocked"),
-                b -> { if (canToggle) togglePlayer(entry.uuid, entry.name, !entry.allowed); })
+                b -> { if (canToggle && !isOwnerRow) togglePlayer(entry.uuid, entry.name, !entry.allowed); })
                 .dimensions(panelX + panelW - sc(tb.offsetXFromRight), rowY + sc(tb.rowOffsetY), sc(tb.width), sc(tb.height))
                 .tooltip(Tooltip.of(Text.literal(tipText)))
-                .build());
+                .build();
+            if (isOwnerRow) toggleBtn.active = false;
+            this.addDrawableChild(toggleBtn);
+
+            // ── Owner star button (★ / ☆) — Issue 3 ──────────────────────────
+            // Only show if there is at least one owner set (i.e., beacon is owned)
+            if (!ownerUUIDs.isEmpty() || primaryOwnerUUID != null) {
+                boolean selfCanManageOwners = isSelfOwner();
+                String starLabel = entry.isOwner ? "★" : "☆";
+                String starTip   = entry.isOwner ? otb.tooltipAllowed : otb.tooltipBlocked;
+
+                if (pendingOwnerChanges.contains(entry.uuid)) {
+                    // In-flight — show disabled "…" until S2C confirms
+                    ButtonWidget pendingBtn = ButtonWidget.builder(Text.literal("…"), b -> {})
+                        .dimensions(panelX + panelW - sc(otb.offsetXFromRight), rowY + sc(otb.rowOffsetY), sc(otb.width), sc(otb.height))
+                        .tooltip(Tooltip.of(Text.translatable("personalbeacon.screen.owner_pending")))
+                        .build();
+                    pendingBtn.active = false;
+                    this.addDrawableChild(pendingBtn);
+                } else if (entry.isPrimaryOwner) {
+                    // Primary owner — disabled, can never be removed
+                    ButtonWidget starBtn = ButtonWidget.builder(Text.literal("★"),
+                        b -> { /* cannot remove primary owner */ })
+                        .dimensions(panelX + panelW - sc(otb.offsetXFromRight), rowY + sc(otb.rowOffsetY), sc(otb.width), sc(otb.height))
+                        .tooltip(Tooltip.of(Text.translatable("personalbeacon.screen.primary_owner")))
+                        .build();
+                    starBtn.active = false;
+                    this.addDrawableChild(starBtn);
+                } else {
+                    this.addDrawableChild(ButtonWidget.builder(Text.literal(starLabel),
+                        b -> {
+                            if (selfCanManageOwners) {
+                                sendOwnerToggle(entry.uuid, !entry.isOwner);
+                            }
+                        })
+                        .dimensions(panelX + panelW - sc(otb.offsetXFromRight), rowY + sc(otb.rowOffsetY), sc(otb.width), sc(otb.height))
+                        .tooltip(Tooltip.of(Text.literal(starTip)))
+                        .build());
+                }
+            }
         }
     }
 
@@ -272,21 +355,79 @@ public class BeaconAccessScreen extends Screen {
         if (add) allowedPlayers.put(uuid, name);
         else allowedPlayers.remove(uuid);
 
-        if (allowedPlayers.isEmpty()) {
-            listExpanded = false;
+        // Action bar feedback — native MC overlay above hotbar
+        if (client != null && client.player != null) {
+            Text msg = add
+                ? Text.translatable("personalbeacon.feedback.added", name)
+                : Text.translatable("personalbeacon.feedback.removed", name);
+            client.player.sendMessage(msg, true);
+        }
+
+        if (allowedPlayers.isEmpty()) scrollOffset = 0;
+        rebuildDisplayList();
+        rebuildButtons();
+    }
+
+    /** Send a C2S owner-toggle packet. */
+    private void sendOwnerToggle(UUID uuid, boolean add) {
+        if (beaconPos == null) return;
+        PacketByteBuf buf = PacketByteBufs.create();
+        buf.writeBlockPos(beaconPos);
+        buf.writeUuid(uuid);
+        buf.writeBoolean(add);
+        ClientPlayNetworking.send(ModNetworking.C2S_TOGGLE_OWNER, buf);
+        // Mark as pending so the button shows "…" immediately while waiting for S2C
+        pendingOwnerChanges.add(uuid);
+        rebuildButtons();
+    }
+
+    /** Remove all restrictions and return to the open-to-everyone state. */
+    private void sendUnrestrict() {
+        showingRestrictedView = false;
+        if (!allowedPlayers.isEmpty() && beaconPos != null) {
+            PacketByteBuf buf = PacketByteBufs.create();
+            buf.writeBlockPos(beaconPos);
+            ClientPlayNetworking.send(ModNetworking.C2S_UNRESTRICT, buf);
+            allowedPlayers.clear();
             scrollOffset = 0;
+            if (client != null && client.player != null) {
+                client.player.sendMessage(
+                    Text.translatable("personalbeacon.feedback.unrestricted"), true);
+            }
         }
         rebuildDisplayList();
         rebuildButtons();
     }
 
     /** Called by PersonalBeaconClient when S2C packet arrives. */
-    public void receiveData(BlockPos pos, UUID owner, Map<UUID, String> allowed, Map<UUID, String> names) {
+    public void receiveData(BlockPos pos, UUID primaryOwner, Set<UUID> owners,
+                            Map<UUID, String> allowed, Map<UUID, String> names) {
         this.beaconPos = pos;
-        this.ownerUUID = owner;
+        this.primaryOwnerUUID = primaryOwner;
+
+        // Emit action bar feedback for confirmed owner changes
+        if (!pendingOwnerChanges.isEmpty() && client != null && client.player != null) {
+            Set<UUID> newOwners = owners;
+            for (UUID pending : pendingOwnerChanges) {
+                boolean wasOwner = ownerUUIDs.contains(pending);
+                boolean isNowOwner = newOwners.contains(pending);
+                String playerName = names.getOrDefault(pending, nameCache.getOrDefault(pending, "?"));
+                if (!wasOwner && isNowOwner) {
+                    client.player.sendMessage(
+                        Text.translatable("personalbeacon.feedback.owner_added", playerName), true);
+                } else if (wasOwner && !isNowOwner) {
+                    client.player.sendMessage(
+                        Text.translatable("personalbeacon.feedback.owner_removed", playerName), true);
+                }
+            }
+            pendingOwnerChanges.clear();
+        }
+
+        this.ownerUUIDs = new HashSet<>(owners);
         this.allowedPlayers = new LinkedHashMap<>(allowed);
         this.nameCache = new HashMap<>(names);
-        if (!allowed.isEmpty()) listExpanded = true;
+        // Server confirmed beacon is unrestricted — leave restrict-view mode
+        if (allowed.isEmpty()) showingRestrictedView = false;
 
         while (!pendingToggles.isEmpty()) {
             var entry = pendingToggles.poll();
@@ -302,7 +443,7 @@ public class BeaconAccessScreen extends Screen {
     public void receiveAllowedPlayers(BlockPos pos, Set<UUID> allowed) {
         Map<UUID, String> map = new LinkedHashMap<>();
         for (UUID u : allowed) map.put(u, nameCache.getOrDefault(u, u.toString().substring(0, 8)));
-        receiveData(pos, ownerUUID, map, nameCache);
+        receiveData(pos, primaryOwnerUUID, ownerUUIDs, map, nameCache);
     }
 
     public void setBeaconPos(BlockPos pos) {
@@ -413,27 +554,40 @@ public class BeaconAccessScreen extends Screen {
             return;
         }
 
+        // ── Unrestricted state (beacon open to all) ───────────────────────────
+        if (!showingRestrictedView && allowedPlayers.isEmpty()) {
+            GuiLayoutConfig.WindowEntry w2 = cfg.window2;
+            drawWindowTexture(context, WINDOW2_TEXTURE,
+                panelX + sc(w2.offsetX), panelY + sc(w2.offsetY),
+                sc(w2.width), sc(w2.height), w2.textureWidth, w2.textureHeight);
+
+            GuiLayoutConfig.TextEntry ut = cfg.singleplayerTitle; // reuse same position
+            drawCenteredText(context,
+                Text.translatable("personalbeacon.screen.unrestricted_title"),
+                panelX + sc(ut.offsetX), panelY + sc(ut.offsetY), ut.color());
+
+            GuiLayoutConfig.TextEntry ud = cfg.singleplayerDesc;
+            drawCenteredText(context,
+                Text.translatable("personalbeacon.screen.unrestricted_desc"),
+                panelX + sc(ud.offsetX), panelY + sc(ud.offsetY), ud.color());
+
+            super.render(context, mouseX, mouseY, delta);
+            return;
+        }
+
+        // ── Context description line ──────────────────────────────────────────
+        GuiLayoutConfig.TextEntry dt = cfg.descText;
+        drawScaledCenteredText(context,
+            Text.translatable("personalbeacon.screen.desc"),
+            panelX + sc(dt.offsetX), panelY + sc(dt.offsetY), dt.scale * panelScale, dt.color());
+
         // ── Owner line ────────────────────────────────────────────────────────
-        if (ownerUUID != null) {
-            String ownerName = nameCache.getOrDefault(ownerUUID, "Unknown");
+        if (primaryOwnerUUID != null) {
+            String ownerName = nameCache.getOrDefault(primaryOwnerUUID, "Unknown");
             GuiLayoutConfig.TextEntry ot = cfg.ownerText;
             drawCenteredText(context,
                 Text.translatable("personalbeacon.screen.owner", ownerName),
                 panelX + sc(ot.offsetX), panelY + sc(ot.offsetY), ot.color());
-        }
-
-        // ── Empty state ───────────────────────────────────────────────────────
-        if (allowedPlayers.isEmpty() && !listExpanded) {
-            fillRect(context, panelX + sc(10), panelY + sc(55), panelW - sc(20), sc(48), 0x33003310);
-            drawBorder(context, panelX + sc(10), panelY + sc(55), panelW - sc(20), sc(48), 0xFF224422);
-            drawCenteredText(context,
-                Text.literal("✔  ").append(Text.translatable("personalbeacon.screen.no_restrictions")),
-                this.width / 2, panelY + sc(64), COLOR_ALLOWED);
-            drawCenteredText(context,
-                Text.translatable("personalbeacon.screen.click_to_add"),
-                this.width / 2, panelY + sc(78), COLOR_TEXT_DIM);
-            super.render(context, mouseX, mouseY, delta);
-            return;
         }
 
         // ── Column headers ────────────────────────────────────────────────────
@@ -448,6 +602,18 @@ public class BeaconAccessScreen extends Screen {
             Text.translatable("personalbeacon.screen.column_access"),
             panelX + sc(ca.offsetX), panelY + sc(ca.offsetY), ca.color(), false);
         context.fill(panelX + sc(8), panelY + sc(72), panelX + panelW - sc(8), panelY + sc(73), 0x44000000);
+
+        // ── Empty list message ────────────────────────────────────────────────
+        if (displayList.isEmpty()) {
+            drawCenteredText(context,
+                Text.translatable("personalbeacon.screen.no_players_nearby"),
+                panelX + panelW / 2, panelY + sc(125), 0xFF888888);
+            drawCenteredText(context,
+                Text.translatable("personalbeacon.screen.no_players_hint"),
+                panelX + panelW / 2, panelY + sc(140), 0xFF3D3D3D);
+            super.render(context, mouseX, mouseY, delta);
+            return;
+        }
 
         // ── Player rows ───────────────────────────────────────────────────────
         for (int i = 0; i < visibleRows; i++) {
@@ -494,7 +660,7 @@ public class BeaconAccessScreen extends Screen {
         }
 
         // ── Non-owner warning ─────────────────────────────────────────────────
-        if (ownerUUID != null && !isSelfOwner()) {
+        if (!ownerUUIDs.isEmpty() && !isSelfOwner()) {
             drawCenteredText(context,
                 Text.translatable("personalbeacon.screen.view_only"),
                 this.width / 2, panelY + panelH - sc(40), 0xFFAA6600);

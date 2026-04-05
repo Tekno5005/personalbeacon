@@ -16,5 +16,21 @@
   "personalbeacon.screen.scroll_up": "▲",
   "personalbeacon.screen.scroll_down": "▼",
   "personalbeacon.screen.owner": "★ Owner: %s",
-  "personalbeacon.screen.view_only": "⚠ View only — you are not the owner"
+  "personalbeacon.screen.view_only": "⚠ View only — you are not the owner",
+  "personalbeacon.screen.primary_owner": "★ First owner — cannot be removed",
+  "personalbeacon.screen.desc": "Only listed players receive this beacon's effects.",
+  "personalbeacon.screen.owner_pending": "Processing...",
+  "personalbeacon.screen.no_players_nearby": "No players nearby",
+  "personalbeacon.screen.no_players_hint": "Server players will appear here.",
+  "personalbeacon.feedback.added": "✔ %s added — will receive effects",
+  "personalbeacon.feedback.removed": "✘ %s removed — effects blocked",
+  "personalbeacon.feedback.owner_added": "★ %s is now a co-manager",
+  "personalbeacon.feedback.owner_removed": "☆ %s removed as co-manager",
+  "personalbeacon.feedback.no_permission": "⚠ You don't have permission to manage this beacon",
+  "personalbeacon.screen.owner_always_allowed": "Owners always receive beacon effects",
+  "personalbeacon.screen.unrestricted_title": "✔  Open to Everyone",
+  "personalbeacon.screen.unrestricted_desc": "All players receive this beacon's effects.",
+  "personalbeacon.screen.open_to_all": "Open to All",
+  "personalbeacon.screen.restrict_access": "Restrict Access",
+  "personalbeacon.feedback.unrestricted": "✔ Beacon opened to all players"
 }
