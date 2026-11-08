@@ -43,18 +43,16 @@ public class GuiLayoutConfig {
     /** window1.png — drawn over the header bar (title area). */
     public WindowEntry window1 = new WindowEntry(
         10, 10,        // offsetX, offsetY
-        280, 41,       // render width, height in pixels
-        335, 46,       // actual PNG dimensions (do not change unless you swap the PNG)
+        280, 41,       // render width, height in pixels (window1.png is exactly 280x41)
         "Header overlay for the 'Personal Access Control' title. " +
         "offsetX/Y: position relative to panel top-left. " +
-        "width/height: rendered size. textureWidth/Height: original PNG size."
+        "width/height: rendered size; the PNG is drawn 1:1 at its own size."
     );
 
     /** window2.png — drawn in place of the old orange singleplayer info box. */
     public WindowEntry window2 = new WindowEntry(
         10, 85,        // offsetX, offsetY
-        280, 50,       // render width, height
-        335, 46,       // actual PNG dimensions
+        280, 50,       // render width, height (window2.png is exactly 280x50)
         "Single-player mode info panel. Replaces the old orange bordered box. " +
         "Only visible when the world is singleplayer."
     );
@@ -62,8 +60,7 @@ public class GuiLayoutConfig {
     /** window3.png — drawn as the background for each player card row. */
     public WindowEntry window3 = new WindowEntry(
         8, 0,          // offsetX (from panel left), offsetY (from row top)
-        265, 22,       // render width, height
-        335, 46,       // actual PNG dimensions
+        265, 22,       // render width, height (window3.png is exactly 265x22)
         "Player card row background. offsetX from panel left, offsetY from row top. " +
         "width/height: rendered size per row."
     );
@@ -120,11 +117,6 @@ public class GuiLayoutConfig {
         "Close the access-control screen"
     );
 
-    public ButtonEntry addPlayersButton = new ButtonEntry(
-        85, 110, 130, 22,
-        "Open the player list to add / manage access"
-    );
-
     public ButtonEntry scrollUpButton = new ButtonEntry(
         275, 75, 18, 18,
         "Scroll the player list up"
@@ -157,29 +149,6 @@ public class GuiLayoutConfig {
         115, 3, 16, 16,
         "Co-manager — can add/remove players. Click to remove.",
         "Make co-manager — this player can also manage the access list."
-    );
-
-    // ─── empty state (no-restrictions) box and text ───────────────────────────
-
-    /**
-     * Background box shown in the empty state (no restrictions set).
-     * Uses offsetX/Y/width/height from ButtonEntry (tooltip is unused here).
-     */
-    public ButtonEntry emptyStateBox = new ButtonEntry(
-        10, 55, 280, 48,
-        ""
-    );
-
-    /** "✔ No restrictions" text inside the empty state box (centred). */
-    public TextEntry emptyStateTitle = new TextEntry(
-        150, 64, 1.0f, "1A8A40",
-        "Empty-state 'No restrictions' text (centred at offsetX)."
-    );
-
-    /** "Click to add players" text below the title in the empty state box (centred). */
-    public TextEntry emptyStateDesc = new TextEntry(
-        150, 78, 1.0f, "3D3D3D",
-        "Empty-state 'Click to add' description text (centred at offsetX)."
     );
 
     /**
@@ -218,13 +187,10 @@ public class GuiLayoutConfig {
         public int offsetY;
         public int width;
         public int height;
-        public int textureWidth;
-        public int textureHeight;
 
-        WindowEntry(int ox, int oy, int w, int h, int tw, int th, String comment) {
-            this.offsetX = ox;       this.offsetY = oy;
-            this.width   = w;        this.height  = h;
-            this.textureWidth = tw;  this.textureHeight = th;
+        WindowEntry(int ox, int oy, int w, int h, String comment) {
+            this.offsetX = ox;  this.offsetY = oy;
+            this.width   = w;   this.height  = h;
             this._comment = comment;
         }
     }

@@ -48,16 +48,8 @@ public class BeaconAccessManager extends PersistentState {
     // Allowed players
     // -------------------------------------------------------
 
-    /**
-     * Add a player to a beacon's allowed list.
-     * Automatically sets owner if this is the first restriction on this beacon.
-     */
+    /** Add a player to a beacon's allowed list. Ownership is set separately via {@link #setOwner}. */
     public void addPlayer(BlockPos pos, UUID playerUUID, String playerName) {
-        // If no owner yet, the first person to add a restriction becomes the owner
-        if (!data.hasOwner(pos)) {
-            data.setOwner(pos, playerUUID);
-            LOGGER.info("{} is now owner of beacon at {}", playerName, pos);
-        }
         data.addPlayer(pos, playerUUID, playerName);
         LOGGER.debug("Added {} ({}) to beacon at {}", playerName, playerUUID, pos);
         markDirty();
@@ -104,12 +96,6 @@ public class BeaconAccessManager extends PersistentState {
 
     public UUID getPrimaryOwner(BlockPos pos) {
         return data.getPrimaryOwner(pos);
-    }
-
-    /** @deprecated Use {@link #getPrimaryOwner(BlockPos)} instead. */
-    @Deprecated
-    public UUID getOwner(BlockPos pos) {
-        return getPrimaryOwner(pos);
     }
 
     public boolean isOwner(BlockPos pos, UUID uuid) {

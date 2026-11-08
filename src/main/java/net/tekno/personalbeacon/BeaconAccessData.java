@@ -45,7 +45,7 @@ public class BeaconAccessData {
     public boolean isAllowed(BlockPos pos, UUID uuid) {
         Set<UUID> set = allowedPlayers.get(pos);
         if (set == null) return true; // unrestricted
-        return set.contains(uuid);
+        return set.contains(uuid) || isOwner(pos, uuid); // owners always receive effects
     }
 
     public boolean isRestricted(BlockPos pos) {
@@ -118,12 +118,6 @@ public class BeaconAccessData {
     /** Returns the primary (first) owner UUID, or null. */
     public UUID getPrimaryOwner(BlockPos pos) {
         return primaryOwners.get(pos);
-    }
-
-    /** @deprecated Use {@link #getPrimaryOwner(BlockPos)} instead. */
-    @Deprecated
-    public UUID getOwner(BlockPos pos) {
-        return getPrimaryOwner(pos);
     }
 
     public boolean hasOwner(BlockPos pos) {

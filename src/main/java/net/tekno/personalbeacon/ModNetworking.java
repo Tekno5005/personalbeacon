@@ -3,12 +3,13 @@ package net.tekno.personalbeacon;
 import net.fabricmc.fabric.api.networking.v1.PacketByteBufs;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.minecraft.network.PacketByteBuf;
+import net.minecraft.screen.BeaconScreenHandler;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.math.BlockPos;
+import net.tekno.personalbeacon.mixin.BeaconScreenHandlerAccessor;
 
-import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
@@ -28,11 +29,11 @@ public class ModNetworking {
     public static void registerServerPackets() {
 
         // C2S: player wants to add/remove someone from a beacon
+        // Packet layout: BlockPos beaconPos, UUID targetUUID, boolean add
         ServerPlayNetworking.registerGlobalReceiver(C2S_UPDATE_ACCESS, (server, player, handler, buf, responseSender) -> {
             BlockPos beaconPos = buf.readBlockPos();
             UUID targetUUID   = buf.readUuid();
             boolean add       = buf.readBoolean();
-            String targetName = buf.readString(); // name sent by client
 
             server.execute(() -> {
                 if (!isPlayerNearBeacon(player, beaconPos)) {
@@ -43,39 +44,58 @@ public class ModNetworking {
 
                 BeaconAccessManager manager = BeaconAccessManager.get(server);
 
-                // Owner check: if beacon has an owner and this player is not an owner, block
-                if (PersonalBeaconConfig.get().allowNonOpManagement) {
-                    if (manager.hasOwner(beaconPos)
-                            && !manager.isOwner(beaconPos, player.getUuid())
-                            && !player.hasPermissionLevel(2)) {
-                        PersonalBeaconMod.LOGGER.warn("Player {} is not an owner of beacon at {}",
-                            player.getName().getString(), beaconPos);
-                        return;
-                    }
+                if (!canManage(manager, player, beaconPos)) {
+                    PersonalBeaconMod.LOGGER.warn("Player {} has no permission to manage beacon at {}",
+                        player.getName().getString(), beaconPos);
+                    sendSyncPacket(player, beaconPos); // revert the client's optimistic change
+                    return;
                 }
 
                 if (add) {
-                    // Resolve name: online player name takes priority over client-sent name
-                    ServerPlayerEntity online = server.getPlayerManager().getPlayer(targetUUID);
-                    String resolvedName = online != null ? online.getName().getString() : targetName;
-                    manager.addPlayer(beaconPos, targetUUID, resolvedName);
+                    // The name comes from the server's cache only (filled when a player joins),
+                    // never from the client, so a client cannot rename other players.
+                    String targetName = manager.getPlayerNames().get(targetUUID);
+                    if (targetName == null) {
+                        PersonalBeaconMod.LOGGER.warn("Player {} tried to add unknown player {} to beacon at {}",
+                            player.getName().getString(), targetUUID, beaconPos);
+                        sendSyncPacket(player, beaconPos);
+                        return;
+                    }
+                    // The player who restricts an unowned beacon becomes its primary owner
+                    boolean claimed = !manager.hasOwner(beaconPos);
+                    if (claimed) {
+                        manager.setOwner(beaconPos, player.getUuid());
+                        PersonalBeaconMod.LOGGER.info("{} is now owner of beacon at {}",
+                            player.getName().getString(), beaconPos);
+                    }
+                    manager.addPlayer(beaconPos, targetUUID, targetName);
+                    if (claimed) sendSyncPacket(player, beaconPos); // client learns it is now the owner
                 } else {
                     manager.removePlayer(beaconPos, targetUUID);
                 }
 
                 PersonalBeaconMod.LOGGER.info("Player {} {} {} ({}) for beacon at {}",
                     player.getName().getString(), add ? "added" : "removed",
-                    targetName, targetUUID, beaconPos);
+                    manager.getPlayerName(targetUUID), targetUUID, beaconPos);
             });
         });
 
-        // C2S: client opened BeaconAccessScreen, wants current data
-        ServerPlayNetworking.registerGlobalReceiver(C2S_REQUEST_SYNC, (server, player, handler, buf, responseSender) -> {
-            BlockPos beaconPos = buf.readBlockPos();
-            PersonalBeaconMod.LOGGER.debug("Sync requested by {} for beacon at {}",
-                player.getName().getString(), beaconPos);
-            server.execute(() -> sendSyncPacket(player, beaconPos));
-        });
+        // C2S: client opened BeaconAccessScreen, wants current data.
+        // The beacon pos comes from the player's open beacon screen on the server —
+        // the client-side screen handler has no position (its context is EMPTY).
+        ServerPlayNetworking.registerGlobalReceiver(C2S_REQUEST_SYNC, (server, player, handler, buf, responseSender) ->
+            server.execute(() -> {
+                if (!(player.currentScreenHandler instanceof BeaconScreenHandler beaconHandler)) {
+                    PersonalBeaconMod.LOGGER.warn("Player {} requested beacon sync without an open beacon screen",
+                        player.getName().getString());
+                    return;
+                }
+                ((BeaconScreenHandlerAccessor) beaconHandler).personalbeacon$getContext().run((world, beaconPos) -> {
+                    PersonalBeaconMod.LOGGER.debug("Sync requested by {} for beacon at {}",
+                        player.getName().getString(), beaconPos);
+                    sendSyncPacket(player, beaconPos);
+                });
+            }));
 
         // C2S: player wants to add/remove a co-manager (owner toggle)
         // Packet layout: BlockPos beaconPos, UUID targetUUID, boolean add
@@ -93,11 +113,10 @@ public class ModNetworking {
 
                 BeaconAccessManager manager = BeaconAccessManager.get(server);
 
-                // Only existing owners or ops can change owner status
-                if (!manager.isOwner(beaconPos, player.getUuid())
-                        && !player.hasPermissionLevel(2)) {
+                if (!canManage(manager, player, beaconPos)) {
                     PersonalBeaconMod.LOGGER.warn("Player {} has no permission to change owners of beacon at {}",
                         player.getName().getString(), beaconPos);
+                    sendSyncPacket(player, beaconPos); // clears the client's pending "…" state
                     return;
                 }
 
@@ -140,11 +159,10 @@ public class ModNetworking {
 
                 BeaconAccessManager manager = BeaconAccessManager.get(server);
 
-                if (manager.hasOwner(beaconPos)
-                        && !manager.isOwner(beaconPos, player.getUuid())
-                        && !player.hasPermissionLevel(2)) {
+                if (!canManage(manager, player, beaconPos)) {
                     PersonalBeaconMod.LOGGER.warn("Player {} has no permission to unrestrict beacon at {}",
                         player.getName().getString(), beaconPos);
+                    sendSyncPacket(player, beaconPos); // revert the client's optimistic change
                     return;
                 }
 
@@ -158,31 +176,24 @@ public class ModNetworking {
 
     /**
      * Send S2C sync packet.
-     * Includes: beacon pos, primary owner UUID, all owner UUIDs, allowed list with names, all known player names.
+     * Includes: beacon pos, primary owner UUID, owners with names, allowed list with names.
+     * Online player names are cached on join (ENTITY_LOAD), so no caching is needed here.
      *
      * Packet layout:
      *   BlockPos beaconPos
      *   boolean  hasPrimaryOwner
      *   UUID     primaryOwnerUUID  (if hasPrimaryOwner)
      *   int      ownerCount
-     *   UUID[]   ownerUUIDs
-     *   int      allowedCount
      *   for each: UUID, String name
-     *   int      namesCacheCount
+     *   int      allowedCount
      *   for each: UUID, String name
      */
     public static void sendSyncPacket(ServerPlayerEntity player, BlockPos beaconPos) {
         BeaconAccessManager manager = BeaconAccessManager.get(player.getServer());
 
-        // Cache all online player names while we're here
-        for (ServerPlayerEntity p : player.getServer().getPlayerManager().getPlayerList()) {
-            manager.cachePlayerName(p.getUuid(), p.getName().getString());
-        }
-
         Set<UUID> allowed = manager.getAllowedPlayers(beaconPos);
         UUID primaryOwner = manager.getPrimaryOwner(beaconPos);
         Set<UUID> owners  = manager.getOwners(beaconPos);
-        Map<UUID, String> nameCache = manager.getPlayerNames();
 
         PacketByteBuf buf = PacketByteBufs.create();
         buf.writeBlockPos(beaconPos);
@@ -191,27 +202,23 @@ public class ModNetworking {
         buf.writeBoolean(primaryOwner != null);
         if (primaryOwner != null) buf.writeUuid(primaryOwner);
 
-        // All owners (co-managers including primary)
-        buf.writeInt(owners.size());
-        for (UUID ownerUuid : owners) buf.writeUuid(ownerUuid);
+        // All owners (co-managers including primary) with names
+        writePlayers(buf, owners, manager);
 
         // Allowed players with names
-        buf.writeInt(allowed.size());
-        for (UUID uuid : allowed) {
+        writePlayers(buf, allowed, manager);
+
+        PersonalBeaconMod.LOGGER.debug("Sending sync to {} — beacon {}, {} allowed, {} owners",
+            player.getName().getString(), beaconPos, allowed.size(), owners.size());
+        ServerPlayNetworking.send(player, S2C_SYNC_ACCESS, buf);
+    }
+
+    private static void writePlayers(PacketByteBuf buf, Set<UUID> uuids, BeaconAccessManager manager) {
+        buf.writeInt(uuids.size());
+        for (UUID uuid : uuids) {
             buf.writeUuid(uuid);
             buf.writeString(manager.getPlayerName(uuid));
         }
-
-        // Full name cache (for offline display)
-        buf.writeInt(nameCache.size());
-        for (Map.Entry<UUID, String> entry : nameCache.entrySet()) {
-            buf.writeUuid(entry.getKey());
-            buf.writeString(entry.getValue());
-        }
-
-        PersonalBeaconMod.LOGGER.debug("Sending sync to {} — beacon {}, {} allowed, {} owners, {} name-cache entries",
-            player.getName().getString(), beaconPos, allowed.size(), owners.size(), nameCache.size());
-        ServerPlayNetworking.send(player, S2C_SYNC_ACCESS, buf);
     }
 
     public static void sendTestModeToggle(MinecraftServer server) {
@@ -222,6 +229,16 @@ public class ModNetworking {
         for (ServerPlayerEntity player : server.getPlayerManager().getPlayerList()) {
             ServerPlayNetworking.send(player, S2C_TEST_MODE, buf);
         }
+    }
+
+    /**
+     * Ops can always manage a beacon. Other players only when allowNonOpManagement is on,
+     * and once the beacon has an owner, only its owners (co-managers included).
+     */
+    private static boolean canManage(BeaconAccessManager manager, ServerPlayerEntity player, BlockPos beaconPos) {
+        if (player.hasPermissionLevel(2)) return true;
+        if (!PersonalBeaconConfig.get().allowNonOpManagement) return false;
+        return !manager.hasOwner(beaconPos) || manager.isOwner(beaconPos, player.getUuid());
     }
 
     private static boolean isPlayerNearBeacon(ServerPlayerEntity player, BlockPos beaconPos) {

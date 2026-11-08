@@ -38,3 +38,6 @@ replay_*.log
 
 # Claude Code
 .claude/
+
+# Log4j output written by unit test runs
+/logs/

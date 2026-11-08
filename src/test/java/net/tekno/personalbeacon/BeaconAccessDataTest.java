@@ -26,6 +26,50 @@ class BeaconAccessDataTest {
     }
 
     // -------------------------------------------------------
+    // Owners always receive effects
+    // -------------------------------------------------------
+
+    @Test
+    void isAllowed_restricted_ownerNotOnListIsAllowed() {
+        BeaconAccessData data = new BeaconAccessData();
+        BlockPos pos = new BlockPos(0, 64, 0);
+        UUID owner = UUID.randomUUID();
+        UUID friend = UUID.randomUUID();
+
+        data.setOwner(pos, owner);
+        data.addPlayer(pos, friend, "Friend");
+
+        assertTrue(data.isAllowed(pos, owner));
+        assertTrue(data.isAllowed(pos, friend));
+        assertFalse(data.isAllowed(pos, UUID.randomUUID()));
+    }
+
+    @Test
+    void isAllowed_restricted_coOwnerNotOnListIsAllowed() {
+        BeaconAccessData data = new BeaconAccessData();
+        BlockPos pos = new BlockPos(0, 64, 0);
+        UUID owner = UUID.randomUUID();
+        UUID coOwner = UUID.randomUUID();
+
+        data.setOwner(pos, owner);
+        data.addOwner(pos, coOwner);
+        data.addPlayer(pos, UUID.randomUUID(), "Friend");
+
+        assertTrue(data.isAllowed(pos, coOwner));
+    }
+
+    @Test
+    void isAllowed_ownerOnly_beaconStaysUnrestricted() {
+        BeaconAccessData data = new BeaconAccessData();
+        BlockPos pos = new BlockPos(0, 64, 0);
+
+        data.setOwner(pos, UUID.randomUUID());
+
+        assertFalse(data.isRestricted(pos));
+        assertTrue(data.isAllowed(pos, UUID.randomUUID()));
+    }
+
+    // -------------------------------------------------------
     // addPlayer
     // -------------------------------------------------------
 
@@ -97,7 +141,7 @@ class BeaconAccessDataTest {
         data.removeBeacon(pos);
 
         assertFalse(data.isRestricted(pos));
-        assertNull(data.getOwner(pos));
+        assertNull(data.getPrimaryOwner(pos));
         assertFalse(data.hasOwner(pos));
     }
 
@@ -112,12 +156,12 @@ class BeaconAccessDataTest {
         UUID owner = UUID.randomUUID();
 
         assertFalse(data.hasOwner(pos));
-        assertNull(data.getOwner(pos));
+        assertNull(data.getPrimaryOwner(pos));
 
         data.setOwner(pos, owner);
 
         assertTrue(data.hasOwner(pos));
-        assertEquals(owner, data.getOwner(pos));
+        assertEquals(owner, data.getPrimaryOwner(pos));
     }
 
     // -------------------------------------------------------
@@ -189,7 +233,7 @@ class BeaconAccessDataTest {
         assertTrue(restored.isAllowed(pos, p1));
         assertTrue(restored.isAllowed(pos, p2));
         assertFalse(restored.isAllowed(pos, UUID.randomUUID()));
-        assertEquals(p1, restored.getOwner(pos));
+        assertEquals(p1, restored.getPrimaryOwner(pos));
         assertEquals("Alice", restored.getPlayerName(p1));
         assertEquals("Bob",   restored.getPlayerName(p2));
     }
@@ -223,7 +267,7 @@ class BeaconAccessDataTest {
 
         BeaconAccessData restored = roundTrip(original);
 
-        assertEquals(owner, restored.getOwner(pos));
+        assertEquals(owner, restored.getPrimaryOwner(pos));
         assertTrue(restored.hasOwner(pos));
     }
 

@@ -30,20 +30,11 @@ public class PersonalBeaconConfig {
     // Config fields — these map directly to JSON keys
     // -------------------------------------------------------
 
-    /** Max players allowed per beacon. 0 = unlimited. */
-    public int maxPlayersPerBeacon = 0;
-
-    /** Whether non-op players can manage their own beacons. */
+    /** Whether non-op players can manage beacons (as owner, or before a beacon has an owner). Ops always can. */
     public boolean allowNonOpManagement = true;
 
     /** Distance check on multiplayer servers (blocks). 0 = disabled. */
     public double maxManageDistance = 8.0;
-
-    /** Whether to skip distance check on singleplayer/integrated server. */
-    public boolean skipDistanceCheckInSingleplayer = true;
-
-    /** Whether test mode starts enabled (useful for singleplayer servers). */
-    public boolean testModeDefault = false;
 
     // -------------------------------------------------------
     // Load / save

@@ -16,8 +16,6 @@ import net.minecraft.text.Text;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.math.BlockPos;
 import net.tekno.personalbeacon.ModNetworking;
-import net.tekno.personalbeacon.PersonalBeaconMod;
-import net.tekno.personalbeacon.client.GuiEditorScreen;
 
 import java.util.*;
 
@@ -36,14 +34,11 @@ public class BeaconAccessScreen extends Screen {
     // Primary (first) owner — can never be removed
     private UUID primaryOwnerUUID = null;
 
-    // All current owners (co-managers, includes primary)
-    private Set<UUID> ownerUUIDs = new HashSet<>();
-
     // UUID -> name for allowed players (includes offline)
     private Map<UUID, String> allowedPlayers = new LinkedHashMap<>();
 
-    // Full name cache from server (all known players)
-    private Map<UUID, String> nameCache = new HashMap<>();
+    // UUID -> name for owners (co-managers, includes primary)
+    private Map<UUID, String> ownerNames = new HashMap<>();
 
     // Online player list from client
     private List<PlayerListEntry> onlinePlayers = new ArrayList<>();
@@ -59,8 +54,6 @@ public class BeaconAccessScreen extends Screen {
     /** Scale a value from the 300×240 design space to the actual panel size. */
     private int sc(int v) { return Math.round(v * panelScale); }
 
-    private final Queue<AbstractMap.SimpleEntry<UUID, Boolean>> pendingToggles = new LinkedList<>();
-
     // UUIDs whose owner-toggle is in-flight (waiting for S2C confirmation)
     private final Set<UUID> pendingOwnerChanges = new HashSet<>();
 
@@ -72,8 +65,6 @@ public class BeaconAccessScreen extends Screen {
 
     private static final Identifier GUI_TEXTURE =
         new Identifier("personalbeacon", "textures/gui/custom_beacon_gui.png");
-    private static final int TEXTURE_W = 352;
-    private static final int TEXTURE_H = 334;
 
     private static final Identifier WINDOW1_TEXTURE =
         new Identifier("personalbeacon", "textures/gui/window1.png");
@@ -84,12 +75,9 @@ public class BeaconAccessScreen extends Screen {
 
     // Colors — designed for the light-grey texture background
     private static final int COLOR_ALLOWED    = 0xFF1A8A40;   // green — allowed / online
-    private static final int COLOR_BLOCKED    = 0xFF8B2222;
     private static final int COLOR_OFFLINE    = 0xFFB03030;   // dim red — offline
     private static final int COLOR_OWNER      = 0xFFAA7700;
-    private static final int COLOR_TEXT_MAIN  = 0xFF3D3D3D;
     private static final int COLOR_TEXT_DIM   = 0xFF3D3D3D;
-    private static final int COLOR_TEXT_GOLD  = 0xFFAA7700;
 
     /** One row in the combined display list. */
     private static class DisplayEntry {
@@ -129,16 +117,8 @@ public class BeaconAccessScreen extends Screen {
     }
 
     private boolean isSelfOwner() {
-        if (ownerUUIDs.isEmpty()) return true; // no owners yet — anyone can manage
-        if (this.client == null) return false;
-        String selfName = this.client.getSession().getUsername();
-        if (this.client.getNetworkHandler() == null) return false;
-        for (PlayerListEntry entry : this.client.getNetworkHandler().getPlayerList()) {
-            if (entry.getProfile().getName().equals(selfName)) {
-                return ownerUUIDs.contains(entry.getProfile().getId());
-            }
-        }
-        return false;
+        if (ownerNames.isEmpty()) return true; // no owners yet — anyone can manage
+        return ownerNames.containsKey(this.client.player.getUuid());
     }
 
     /** Rebuild the combined display list from allowed + online. */
@@ -153,23 +133,29 @@ public class BeaconAccessScreen extends Screen {
 
         Set<UUID> seen = new LinkedHashSet<>();
 
-        // 1. Allowed players first (may include offline)
-        for (Map.Entry<UUID, String> entry : allowedPlayers.entrySet()) {
+        // 1. Owners first — they always receive effects (may include offline)
+        for (Map.Entry<UUID, String> entry : ownerNames.entrySet()) {
             UUID uuid = entry.getKey();
-            String name = entry.getValue();
-            boolean isOwner = ownerUUIDs.contains(uuid);
             boolean isPrimary = uuid.equals(primaryOwnerUUID);
-            displayList.add(new DisplayEntry(uuid, name, onlineSet.contains(uuid), true, isOwner, isPrimary));
+            displayList.add(new DisplayEntry(uuid, entry.getValue(), onlineSet.contains(uuid), true, true, isPrimary));
             seen.add(uuid);
         }
 
-        // 2. Online players not yet in allowed list
+        // 2. Allowed players (may include offline)
+        for (Map.Entry<UUID, String> entry : allowedPlayers.entrySet()) {
+            UUID uuid = entry.getKey();
+            if (seen.contains(uuid)) continue;
+            displayList.add(new DisplayEntry(uuid, entry.getValue(), onlineSet.contains(uuid), true, false, false));
+            seen.add(uuid);
+        }
+
+        // 3. Online players not yet listed
         if (onlinePlayers != null) {
             for (PlayerListEntry entry : onlinePlayers) {
                 UUID uuid = entry.getProfile().getId();
                 if (seen.contains(uuid)) continue;
                 String name = entry.getProfile().getName();
-                boolean isOwner = ownerUUIDs.contains(uuid);
+                boolean isOwner = ownerNames.containsKey(uuid);
                 boolean isPrimary = uuid.equals(primaryOwnerUUID);
                 displayList.add(new DisplayEntry(uuid, name, true, false, isOwner, isPrimary));
             }
@@ -179,8 +165,8 @@ public class BeaconAccessScreen extends Screen {
     @Override
     protected void init() {
         // Scale down from the 300×240 design size to fit within the screen (20 px margin each side)
-        int availW = this.width  - 40;
-        int availH = this.height - 40;
+        int availW = this.width  - 20;
+        int availH = this.height - 20;
         panelScale = Math.min(1.0f, Math.min(availW / 300f, availH / 240f));
         panelW = Math.round(300 * panelScale);
         panelH = Math.round(240 * panelScale);
@@ -216,7 +202,7 @@ public class BeaconAccessScreen extends Screen {
         if (isSingleplayer()) return;
 
         // GUI Editor button — only in multiplayer, only when unlocked via /personalbeaconop edit
-        if (GuiEditorScreen.editorUnlocked && !isSingleplayer()) {
+        if (GuiEditorScreen.editorUnlocked) {
             this.addDrawableChild(ButtonWidget.builder(Text.literal("⚙"),
                 b -> { if (this.client != null) this.client.setScreen(new GuiEditorScreen(this)); })
                 .dimensions(panelX + panelW - sc(22), panelY + sc(2), sc(20), sc(20))
@@ -224,9 +210,12 @@ public class BeaconAccessScreen extends Screen {
                 .build());
         }
 
+        // No actions until the server has sent this beacon's data (beaconPos is set by receiveData)
+        if (beaconPos == null) return;
+
         // ── Unrestricted state: show "Restrict Access" button, skip player list ─
         if (!showingRestrictedView && allowedPlayers.isEmpty()) {
-            boolean canManage = isSelfOwner() || ownerUUIDs.isEmpty();
+            boolean canManage = isSelfOwner();
             GuiLayoutConfig.ButtonEntry ra = cfg.restrictAccessButton;
             ButtonWidget raBtn = ButtonWidget.builder(
                 Text.translatable("personalbeacon.screen.restrict_access"),
@@ -240,7 +229,7 @@ public class BeaconAccessScreen extends Screen {
         }
 
         // ── "Open to All" button — visible when in restricted view ────────────
-        if (isSelfOwner() || ownerUUIDs.isEmpty()) {
+        if (isSelfOwner()) {
             GuiLayoutConfig.ButtonEntry oa = cfg.openToAllButton;
             this.addDrawableChild(ButtonWidget.builder(
                 Text.translatable("personalbeacon.screen.open_to_all"),
@@ -278,28 +267,31 @@ public class BeaconAccessScreen extends Screen {
 
             DisplayEntry entry = displayList.get(idx);
             int rowY = listStartY + i * sc(ROW_HEIGHT);
-            boolean canToggle = isSelfOwner() || ownerUUIDs.isEmpty();
+            boolean canToggle = isSelfOwner();
 
             // ── Access toggle button (ALLOWED / BLOCKED) ──────────────────────
             // Owners are always allowed and cannot be toggled
             boolean isOwnerRow = entry.isOwner;
             String tipText = isOwnerRow
                 ? Text.translatable("personalbeacon.screen.owner_always_allowed").getString()
-                : (entry.allowed ? tb.tooltipAllowed : tb.tooltipBlocked);
+                : !canToggle
+                    ? Text.translatable("personalbeacon.feedback.no_permission").getString()
+                    : (entry.allowed ? tb.tooltipAllowed : tb.tooltipBlocked);
             ButtonWidget toggleBtn = ButtonWidget.builder(
                 entry.allowed
                     ? Text.translatable("personalbeacon.screen.allowed")
                     : Text.translatable("personalbeacon.screen.blocked"),
-                b -> { if (canToggle && !isOwnerRow) togglePlayer(entry.uuid, entry.name, !entry.allowed); })
+                b -> sendToggle(entry.uuid, entry.name, !entry.allowed))
                 .dimensions(panelX + panelW - sc(tb.offsetXFromRight), rowY + sc(tb.rowOffsetY), sc(tb.width), sc(tb.height))
                 .tooltip(Tooltip.of(Text.literal(tipText)))
                 .build();
-            if (isOwnerRow) toggleBtn.active = false;
+            // Owners can't be toggled; viewers who can't manage see inactive controls
+            toggleBtn.active = canToggle && !isOwnerRow;
             this.addDrawableChild(toggleBtn);
 
             // ── Owner star button (★ / ☆) — Issue 3 ──────────────────────────
             // Only show if there is at least one owner set (i.e., beacon is owned)
-            if (!ownerUUIDs.isEmpty() || primaryOwnerUUID != null) {
+            if (!ownerNames.isEmpty()) {
                 boolean selfCanManageOwners = isSelfOwner();
                 String starLabel = entry.isOwner ? "★" : "☆";
                 String starTip   = entry.isOwner ? otb.tooltipAllowed : otb.tooltipBlocked;
@@ -322,26 +314,18 @@ public class BeaconAccessScreen extends Screen {
                     starBtn.active = false;
                     this.addDrawableChild(starBtn);
                 } else {
-                    this.addDrawableChild(ButtonWidget.builder(Text.literal(starLabel),
-                        b -> {
-                            if (selfCanManageOwners) {
-                                sendOwnerToggle(entry.uuid, !entry.isOwner);
-                            }
-                        })
+                    ButtonWidget starBtn = ButtonWidget.builder(Text.literal(starLabel),
+                        b -> sendOwnerToggle(entry.uuid, !entry.isOwner))
                         .dimensions(panelX + panelW - sc(otb.offsetXFromRight), rowY + sc(otb.rowOffsetY), sc(otb.width), sc(otb.height))
-                        .tooltip(Tooltip.of(Text.literal(starTip)))
-                        .build());
+                        .tooltip(Tooltip.of(selfCanManageOwners
+                            ? Text.literal(starTip)
+                            : Text.translatable("personalbeacon.feedback.no_permission")))
+                        .build();
+                    starBtn.active = selfCanManageOwners;
+                    this.addDrawableChild(starBtn);
                 }
             }
         }
-    }
-
-    private void togglePlayer(UUID uuid, String name, boolean add) {
-        if (beaconPos == null) {
-            pendingToggles.add(new AbstractMap.SimpleEntry<>(uuid, add));
-            return;
-        }
-        sendToggle(uuid, name, add);
     }
 
     private void sendToggle(UUID uuid, String name, boolean add) {
@@ -349,7 +333,6 @@ public class BeaconAccessScreen extends Screen {
         buf.writeBlockPos(beaconPos);
         buf.writeUuid(uuid);
         buf.writeBoolean(add);
-        buf.writeString(name); // send name so server can cache it
         ClientPlayNetworking.send(ModNetworking.C2S_UPDATE_ACCESS, buf);
 
         if (add) allowedPlayers.put(uuid, name);
@@ -370,7 +353,6 @@ public class BeaconAccessScreen extends Screen {
 
     /** Send a C2S owner-toggle packet. */
     private void sendOwnerToggle(UUID uuid, boolean add) {
-        if (beaconPos == null) return;
         PacketByteBuf buf = PacketByteBufs.create();
         buf.writeBlockPos(beaconPos);
         buf.writeUuid(uuid);
@@ -384,7 +366,7 @@ public class BeaconAccessScreen extends Screen {
     /** Remove all restrictions and return to the open-to-everyone state. */
     private void sendUnrestrict() {
         showingRestrictedView = false;
-        if (!allowedPlayers.isEmpty() && beaconPos != null) {
+        if (!allowedPlayers.isEmpty()) {
             PacketByteBuf buf = PacketByteBufs.create();
             buf.writeBlockPos(beaconPos);
             ClientPlayNetworking.send(ModNetworking.C2S_UNRESTRICT, buf);
@@ -400,18 +382,17 @@ public class BeaconAccessScreen extends Screen {
     }
 
     /** Called by PersonalBeaconClient when S2C packet arrives. */
-    public void receiveData(BlockPos pos, UUID primaryOwner, Set<UUID> owners,
-                            Map<UUID, String> allowed, Map<UUID, String> names) {
+    public void receiveData(BlockPos pos, UUID primaryOwner,
+                            Map<UUID, String> owners, Map<UUID, String> allowed) {
         this.beaconPos = pos;
         this.primaryOwnerUUID = primaryOwner;
 
         // Emit action bar feedback for confirmed owner changes
         if (!pendingOwnerChanges.isEmpty() && client != null && client.player != null) {
-            Set<UUID> newOwners = owners;
             for (UUID pending : pendingOwnerChanges) {
-                boolean wasOwner = ownerUUIDs.contains(pending);
-                boolean isNowOwner = newOwners.contains(pending);
-                String playerName = names.getOrDefault(pending, nameCache.getOrDefault(pending, "?"));
+                boolean wasOwner = ownerNames.containsKey(pending);
+                boolean isNowOwner = owners.containsKey(pending);
+                String playerName = owners.getOrDefault(pending, ownerNames.getOrDefault(pending, "?"));
                 if (!wasOwner && isNowOwner) {
                     client.player.sendMessage(
                         Text.translatable("personalbeacon.feedback.owner_added", playerName), true);
@@ -423,47 +404,18 @@ public class BeaconAccessScreen extends Screen {
             pendingOwnerChanges.clear();
         }
 
-        this.ownerUUIDs = new HashSet<>(owners);
+        this.ownerNames = new HashMap<>(owners);
         this.allowedPlayers = new LinkedHashMap<>(allowed);
-        this.nameCache = new HashMap<>(names);
         // Server confirmed beacon is unrestricted — leave restrict-view mode
         if (allowed.isEmpty()) showingRestrictedView = false;
 
-        while (!pendingToggles.isEmpty()) {
-            var entry = pendingToggles.poll();
-            PersonalBeaconMod.LOGGER.debug("Processing queued toggle for {}", entry.getKey());
-            String name = nameCache.getOrDefault(entry.getKey(), entry.getKey().toString().substring(0, 8));
-            sendToggle(entry.getKey(), name, entry.getValue());
-        }
         rebuildDisplayList();
         rebuildButtons();
-    }
-
-    // Legacy compatibility
-    public void receiveAllowedPlayers(BlockPos pos, Set<UUID> allowed) {
-        Map<UUID, String> map = new LinkedHashMap<>();
-        for (UUID u : allowed) map.put(u, nameCache.getOrDefault(u, u.toString().substring(0, 8)));
-        receiveData(pos, primaryOwnerUUID, ownerUUIDs, map, nameCache);
-    }
-
-    public void setBeaconPos(BlockPos pos) {
-        this.beaconPos = pos;
     }
 
     // -------------------------------------------------------
     // Rendering
     // -------------------------------------------------------
-
-    private void fillRect(DrawContext ctx, int x, int y, int w, int h, int color) {
-        ctx.fill(x, y, x + w, y + h, color);
-    }
-
-    private void drawBorder(DrawContext ctx, int x, int y, int w, int h, int color) {
-        ctx.fill(x, y, x + w, y + 1, color);
-        ctx.fill(x, y + h - 1, x + w, y + h, color);
-        ctx.fill(x, y, x + 1, y + h, color);
-        ctx.fill(x + w - 1, y, x + w, y + h, color);
-    }
 
     /**
      * Draws centered text scaled by {@code scale}.
@@ -486,16 +438,10 @@ public class BeaconAccessScreen extends Screen {
     }
 
     /** Draws a PNG texture scaled to the given render size. */
+    /** Draws the whole texture into the given rect. 1:1 (crisp) when the PNG has exactly that size. */
     private void drawWindowTexture(DrawContext ctx, Identifier texture,
-                                   int x, int y, int renderW, int renderH,
-                                   int texW, int texH) {
-        float sx = (float) renderW / texW;
-        float sy = (float) renderH / texH;
-        ctx.getMatrices().push();
-        ctx.getMatrices().translate(x, y, 0);
-        ctx.getMatrices().scale(sx, sy, 1.0f);
-        ctx.drawTexture(texture, 0, 0, 0, 0, texW, texH, texW, texH);
-        ctx.getMatrices().pop();
+                                   int x, int y, int renderW, int renderH) {
+        ctx.drawTexture(texture, x, y, 0, 0, renderW, renderH, renderW, renderH);
     }
 
     @Override
@@ -503,20 +449,14 @@ public class BeaconAccessScreen extends Screen {
         this.renderBackground(context);
         GuiLayoutConfig cfg = GuiLayoutConfig.get();
 
-        // ── Main background ───────────────────────────────────────────────────
-        float scaleX = (float) panelW / TEXTURE_W;
-        float scaleY = (float) panelH / TEXTURE_H;
-        context.getMatrices().push();
-        context.getMatrices().translate(panelX, panelY, 0);
-        context.getMatrices().scale(scaleX, scaleY, 1.0f);
-        context.drawTexture(GUI_TEXTURE, 0, 0, 0, 0, TEXTURE_W, TEXTURE_H, TEXTURE_W, TEXTURE_H);
-        context.getMatrices().pop();
+        // ── Main background (PNG is 300x240 = the panel's design size) ─────────
+        drawWindowTexture(context, GUI_TEXTURE, panelX, panelY, panelW, panelH);
 
         // ── Window 1: header overlay ──────────────────────────────────────────
         GuiLayoutConfig.WindowEntry w1 = cfg.window1;
         drawWindowTexture(context, WINDOW1_TEXTURE,
             panelX + sc(w1.offsetX), panelY + sc(w1.offsetY),
-            sc(w1.width), sc(w1.height), w1.textureWidth, w1.textureHeight);
+            sc(w1.width), sc(w1.height));
 
         // ── Title + coordinates ───────────────────────────────────────────────
         GuiLayoutConfig.TextEntry tt = cfg.titleText;
@@ -538,7 +478,7 @@ public class BeaconAccessScreen extends Screen {
             GuiLayoutConfig.WindowEntry w2 = cfg.window2;
             drawWindowTexture(context, WINDOW2_TEXTURE,
                 panelX + sc(w2.offsetX), panelY + sc(w2.offsetY),
-                sc(w2.width), sc(w2.height), w2.textureWidth, w2.textureHeight);
+                sc(w2.width), sc(w2.height));
 
             GuiLayoutConfig.TextEntry st = cfg.singleplayerTitle;
             drawCenteredText(context,
@@ -559,7 +499,7 @@ public class BeaconAccessScreen extends Screen {
             GuiLayoutConfig.WindowEntry w2 = cfg.window2;
             drawWindowTexture(context, WINDOW2_TEXTURE,
                 panelX + sc(w2.offsetX), panelY + sc(w2.offsetY),
-                sc(w2.width), sc(w2.height), w2.textureWidth, w2.textureHeight);
+                sc(w2.width), sc(w2.height));
 
             GuiLayoutConfig.TextEntry ut = cfg.singleplayerTitle; // reuse same position
             drawCenteredText(context,
@@ -583,7 +523,7 @@ public class BeaconAccessScreen extends Screen {
 
         // ── Owner line ────────────────────────────────────────────────────────
         if (primaryOwnerUUID != null) {
-            String ownerName = nameCache.getOrDefault(primaryOwnerUUID, "Unknown");
+            String ownerName = ownerNames.getOrDefault(primaryOwnerUUID, "Unknown");
             GuiLayoutConfig.TextEntry ot = cfg.ownerText;
             drawCenteredText(context,
                 Text.translatable("personalbeacon.screen.owner", ownerName),
@@ -626,7 +566,7 @@ public class BeaconAccessScreen extends Screen {
             GuiLayoutConfig.WindowEntry w3 = cfg.window3;
             drawWindowTexture(context, WINDOW3_TEXTURE,
                 panelX + sc(w3.offsetX), rowY + sc(w3.offsetY),
-                sc(w3.width), sc(w3.height), w3.textureWidth, w3.textureHeight);
+                sc(w3.width), sc(w3.height));
 
             String prefix = entry.isOwner ? "★ " : (idx + 1) + ". ";
             String nameLabel = prefix + entry.name;
@@ -660,7 +600,7 @@ public class BeaconAccessScreen extends Screen {
         }
 
         // ── Non-owner warning ─────────────────────────────────────────────────
-        if (!ownerUUIDs.isEmpty() && !isSelfOwner()) {
+        if (!isSelfOwner()) {
             drawCenteredText(context,
                 Text.translatable("personalbeacon.screen.view_only"),
                 this.width / 2, panelY + panelH - sc(40), 0xFFAA6600);

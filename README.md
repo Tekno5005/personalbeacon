@@ -6,12 +6,11 @@
 
   * **Granular Access Control:** Restrict Beacon effects to specific players via an integrated list.
   * **Integrated GUI:** Manage player access directly through a custom button injected into the vanilla Beacon interface.
-  * **Custom Texture System:** All GUI panels and buttons use custom PNG textures (`window1`, `window2`, `window3`, `Button.png`) that can be replaced by resource packs.
+  * **Custom Texture System:** All GUI panels and buttons use custom PNG textures (`window1`, `window2`, `window3`, `Button.png`) that can be replaced by resource packs. Panel textures are drawn 1:1 at their own pixel size (`custom_beacon_gui` 300×240, `window1` 280×41, `window2` 280×50, `window3` 265×22), so replacements should keep these sizes.
   * **In-Game GUI Editor:** Reposition and resize every UI element live with the built-in layout editor — no restarts needed.
   * **Multi-Language Support:** Fully translated into English, Turkish, French, and Spanish.
   * **Smart Fallback:** If no restrictions are configured for a given Beacon, it defaults to vanilla behavior (all players within range receive effects).
-  * **Automatic State Cleanup:** When a Beacon is broken, its associated access data is automatically purged from the world data to prevent memory leaks and state bloat.
-  * **Softlock Prevention:** In singleplayer worlds, the first interaction automatically adds the player to the access list to prevent accidental self-exclusion.
+  * **Automatic State Cleanup:** When a Beacon is removed from the world (broken, blown up, or replaced by commands), its access data is automatically purged. Unloading a chunk keeps the data.
   * **Distance Validation:** Configurable interaction range (`maxManageDistance`) prevents exploitation and remote management on multiplayer servers.
 
 -----
@@ -31,7 +30,7 @@
 
 The mod utilizes `PersistentState` for server-side data persistence (`Map<BlockPos, Set<UUID>>`) and a custom packet system (`ModNetworking`) for client-server synchronization.
 
-  * **Mixins:** Extends vanilla behavior by injecting into `BeaconBlockEntity` and `BeaconScreen`.
+  * **Mixins:** Extends vanilla behavior by filtering the player list in `BeaconBlockEntity.applyPlayerEffects` (MixinExtras `@ModifyExpressionValue`, chains with other mods) and injecting into `BeaconScreen`. The beacon position is resolved server-side from the player's open `BeaconScreenHandler`.
   * **Networking:** Implements channels (`C2S_UPDATE_ACCESS`, `S2C_SYNC_ACCESS`, `C2S_REQUEST_SYNC`, `S2C_TEST_MODE`) for real-time state synchronization and GUI updates.
 
 -----
@@ -49,7 +48,7 @@ The mod includes a built-in GUI editor for repositioning all UI elements without
 
 ### Editable Elements
 
-Windows (`window1`, `window2`, `window3`), text positions (title, coordinates, owner, column headers), all buttons (close, add players, scroll, toggle, manage access), and the Manage Access button on the vanilla Beacon screen.
+Windows (`window1`, `window2`, `window3`), text positions (title, coordinates, owner, column headers), all buttons (close, scroll, access toggle, owner toggle, manage access), and the Manage Access button on the vanilla Beacon screen.
 
 -----
 
@@ -70,10 +69,8 @@ All user-facing strings use `Text.translatable()`. To add a new language, create
 
 The mod behavior can be modified via `config/personalbeacon.json`:
 
-  * `maxPlayersPerBeacon`: Maximum number of players allowed on a single Beacon's list (0 = Unlimited).
-  * `maxManageDistance`: Maximum block distance allowed for a player to modify a Beacon's access list (Default: 8.0).
-  * `allowNonOpManagement`: Determines if non-operator players can manage the Beacons they interact with.
-  * `skipDistanceCheckInSingleplayer`: Bypasses distance validation in singleplayer environments.
+  * `maxManageDistance`: Maximum block distance allowed for a player to modify a Beacon's access list on a dedicated server (Default: 8.0, 0 = no limit). Singleplayer/LAN worlds skip this check.
+  * `allowNonOpManagement`: When `true` (default), non-operator players can manage beacons — only the owners once a beacon has an owner. When `false`, only operators can manage beacons.
 
 -----
 
@@ -97,9 +94,7 @@ The mod behavior can be modified via `config/personalbeacon.json`:
 
 ## Known Issues & Technical Constraints
 
-  * **Mixin Conflicts:** `BeaconBlockEntityMixin` utilizes `@Inject(at = @At("HEAD"), cancellable = true)`. This early injection and cancellation may cause compatibility issues with other mods that heavily modify Beacon logic or effect distribution.
-  * **Accessor Implementation:** `BeaconScreenHandlerAccessor` is implemented as a class mixin rather than an interface. To prevent Local Variable Table (LVT) conflicts, a utility class (`BeaconPosHolder`) is actively used.
-  * **State Volatility:** The `/personalbeacon test` mode toggle is volatile. It defaults to `false` upon server restart as defined by `testModeDefault`.
+  * **State Volatility:** The `/personalbeacon test` mode toggle is volatile. It defaults to `false` upon server restart.
 
 -----
 

@@ -6,6 +6,7 @@ import net.fabricmc.api.Environment;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandManager;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
+import net.minecraft.network.PacketByteBuf;
 import net.minecraft.text.Text;
 import net.minecraft.util.math.BlockPos;
 import net.tekno.personalbeacon.client.BeaconAccessScreen;
@@ -56,37 +57,18 @@ public class PersonalBeaconClient implements ClientModInitializer {
             boolean hasPrimaryOwner = buf.readBoolean();
             UUID primaryOwnerUUID = hasPrimaryOwner ? buf.readUuid() : null;
 
-            // All owners (co-managers including primary)
-            int ownerCount = buf.readInt();
-            Set<UUID> ownerUUIDs = new HashSet<>();
-            for (int i = 0; i < ownerCount; i++) {
-                ownerUUIDs.add(buf.readUuid());
-            }
+            // All owners (co-managers including primary) with names
+            Map<UUID, String> owners = readPlayers(buf);
 
-            // Allowed players
-            int allowedCount = buf.readInt();
-            Map<UUID, String> allowed = new LinkedHashMap<>();
-            for (int i = 0; i < allowedCount; i++) {
-                UUID uuid = buf.readUuid();
-                String name = buf.readString();
-                allowed.put(uuid, name);
-            }
+            // Allowed players with names
+            Map<UUID, String> allowed = readPlayers(buf);
 
-            // Full name cache
-            int cacheCount = buf.readInt();
-            Map<UUID, String> nameCache = new HashMap<>();
-            for (int i = 0; i < cacheCount; i++) {
-                UUID uuid = buf.readUuid();
-                String name = buf.readString();
-                nameCache.put(uuid, name);
-            }
-
-            LOGGER.debug("Received sync for beacon {} — {} allowed, {} owners, {} name-cache entries",
-                beaconPos, allowedCount, ownerCount, cacheCount);
+            LOGGER.debug("Received sync for beacon {} — {} allowed, {} owners",
+                beaconPos, allowed.size(), owners.size());
 
             client.execute(() -> {
                 if (client.currentScreen instanceof BeaconAccessScreen screen) {
-                    screen.receiveData(beaconPos, primaryOwnerUUID, ownerUUIDs, allowed, nameCache);
+                    screen.receiveData(beaconPos, primaryOwnerUUID, owners, allowed);
                 }
             });
         });
@@ -102,5 +84,15 @@ public class PersonalBeaconClient implements ClientModInitializer {
                 }
             });
         });
+    }
+
+    /** Reads the {@code int count; for each: UUID, String name} block written by ModNetworking. */
+    private static Map<UUID, String> readPlayers(PacketByteBuf buf) {
+        int count = buf.readInt();
+        Map<UUID, String> players = new LinkedHashMap<>();
+        for (int i = 0; i < count; i++) {
+            players.put(buf.readUuid(), buf.readString());
+        }
+        return players;
     }
 }

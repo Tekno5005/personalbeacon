@@ -93,7 +93,7 @@ public class DebugCommand {
         for (var entry : snapshot.entrySet()) {
             BlockPos pos = entry.getKey();
             Set<UUID> allowed = entry.getValue();
-            UUID owner = manager.getOwner(pos);
+            UUID owner = manager.getPrimaryOwner(pos);
             String ownerName = owner != null ? manager.getPlayerName(owner) : "none";
 
             src.sendFeedback(() -> Text.literal(
@@ -122,12 +122,14 @@ public class DebugCommand {
         // Try to find online player first
         ServerPlayerEntity online = src.getServer().getPlayerManager().getPlayer(playerName);
         if (online != null) {
+            if (!manager.hasOwner(pos)) manager.setOwner(pos, online.getUuid());
             manager.addPlayer(pos, online.getUuid(), online.getName().getString());
             src.sendFeedback(() -> Text.literal("§aAdded §f" + playerName + " §ato beacon at " + posStr(pos)), false);
         } else {
             // Player is offline — look up UUID from name cache
             UUID uuid = findUUIDByName(manager, playerName);
             if (uuid != null) {
+                if (!manager.hasOwner(pos)) manager.setOwner(pos, uuid);
                 manager.addPlayer(pos, uuid, playerName);
                 src.sendFeedback(() -> Text.literal("§aAdded offline player §f" + playerName + " §ato beacon at " + posStr(pos)), false);
             } else {
