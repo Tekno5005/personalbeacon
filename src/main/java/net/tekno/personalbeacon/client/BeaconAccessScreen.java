@@ -446,10 +446,6 @@ public class BeaconAccessScreen extends Screen {
         receiveData(pos, primaryOwnerUUID, ownerUUIDs, map, nameCache);
     }
 
-    public void setBeaconPos(BlockPos pos) {
-        this.beaconPos = pos;
-    }
-
     // -------------------------------------------------------
     // Rendering
     // -------------------------------------------------------

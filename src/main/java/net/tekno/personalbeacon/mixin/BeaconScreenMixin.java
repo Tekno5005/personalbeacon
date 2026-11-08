@@ -9,11 +9,8 @@ import net.minecraft.client.gui.screen.ingame.HandledScreen;
 import net.minecraft.client.gui.tooltip.Tooltip;
 import net.minecraft.client.gui.widget.ButtonWidget;
 import net.minecraft.entity.player.PlayerInventory;
-import net.minecraft.network.PacketByteBuf;
 import net.minecraft.screen.BeaconScreenHandler;
 import net.minecraft.text.Text;
-import net.minecraft.util.math.BlockPos;
-import net.tekno.personalbeacon.BeaconPosHolder;
 import net.tekno.personalbeacon.ModNetworking;
 import net.tekno.personalbeacon.client.BeaconAccessScreen;
 import net.tekno.personalbeacon.client.GuiEditorScreen;
@@ -44,19 +41,10 @@ public abstract class BeaconScreenMixin extends HandledScreen<BeaconScreenHandle
             btn -> {
                 if (this.client == null) return;
 
-                BeaconAccessScreen screen = new BeaconAccessScreen(self);
-
-                // Read pos from the plain holder — set by BeaconScreenHandlerAccessor
-                BlockPos pos = BeaconPosHolder.getLastPos();
-                if (pos != null) {
-                    // Send C2S request so server replies with current access list
-                    PacketByteBuf buf = PacketByteBufs.create();
-                    buf.writeBlockPos(pos);
-                    ClientPlayNetworking.send(ModNetworking.C2S_REQUEST_SYNC, buf);
-                    screen.setBeaconPos(pos);
-                }
-
-                this.client.setScreen(screen);
+                // Server resolves the beacon pos from our open beacon screen and
+                // replies with S2C_SYNC_ACCESS, which carries the pos to the new screen.
+                ClientPlayNetworking.send(ModNetworking.C2S_REQUEST_SYNC, PacketByteBufs.empty());
+                this.client.setScreen(new BeaconAccessScreen(self));
             }));
 
         // ── GUI Editor button — visible on this screen when editor is unlocked ─

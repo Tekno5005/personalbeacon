@@ -31,7 +31,7 @@
 
 The mod utilizes `PersistentState` for server-side data persistence (`Map<BlockPos, Set<UUID>>`) and a custom packet system (`ModNetworking`) for client-server synchronization.
 
-  * **Mixins:** Extends vanilla behavior by injecting into `BeaconBlockEntity` and `BeaconScreen`.
+  * **Mixins:** Extends vanilla behavior by filtering the player list in `BeaconBlockEntity.applyPlayerEffects` (MixinExtras `@ModifyExpressionValue`, chains with other mods) and injecting into `BeaconScreen`. The beacon position is resolved server-side from the player's open `BeaconScreenHandler`.
   * **Networking:** Implements channels (`C2S_UPDATE_ACCESS`, `S2C_SYNC_ACCESS`, `C2S_REQUEST_SYNC`, `S2C_TEST_MODE`) for real-time state synchronization and GUI updates.
 
 -----
@@ -97,8 +97,6 @@ The mod behavior can be modified via `config/personalbeacon.json`:
 
 ## Known Issues & Technical Constraints
 
-  * **Mixin Conflicts:** `BeaconBlockEntityMixin` utilizes `@Inject(at = @At("HEAD"), cancellable = true)`. This early injection and cancellation may cause compatibility issues with other mods that heavily modify Beacon logic or effect distribution.
-  * **Accessor Implementation:** `BeaconScreenHandlerAccessor` is implemented as a class mixin rather than an interface. To prevent Local Variable Table (LVT) conflicts, a utility class (`BeaconPosHolder`) is actively used.
   * **State Volatility:** The `/personalbeacon test` mode toggle is volatile. It defaults to `false` upon server restart as defined by `testModeDefault`.
 
 -----

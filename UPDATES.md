@@ -5,6 +5,20 @@ Format follows [Semantic Versioning](https://semver.org/).
 
 -----
 
+## Unreleased
+
+### Fixed
+- **Dedicated server crash on opening a beacon** — `BeaconScreenHandlerAccessor` (a common mixin) called the client-only `BeaconPosHolder` (`@Environment(CLIENT)`). Fabric Loader refuses to load such a class on a dedicated server (`Cannot load class … in environment type SERVER`). `BeaconPosHolder` is removed.
+- **Manage Access had no beacon position in multiplayer** — the client-side `BeaconScreenHandler` is built with `ScreenHandlerContext.EMPTY`, so the position was only ever captured in singleplayer (same JVM as the server). `C2S_REQUEST_SYNC` now carries no payload; the server resolves the position from the player's open beacon screen and returns it in `S2C_SYNC_ACCESS`.
+- **Wrong effect level on restricted beacons** — the mod re-implemented `applyPlayerEffects` and used amplifier `beaconLevel - 1` (e.g. Haste IV on a level-4 beacon). Vanilla uses amplifier 0, or 1 only for the level-4 primary upgrade. Range (vanilla box + full-height column) and spectator handling also differed.
+
+### Changed
+- **Mod compatibility** — `BeaconBlockEntityMixin` no longer uses `@Inject(HEAD, cancellable = true)`. It now filters the player list returned by `World.getNonSpectatingEntities` with MixinExtras `@ModifyExpressionValue`, so vanilla logic stays intact and other mods modifying the same code chain with it.
+- `BeaconScreenHandlerAccessor` is now a real `@Accessor` interface for the handler's `context` field.
+- **Network protocol** — `C2S_REQUEST_SYNC` payload changed (empty). Client and server must run the same mod version.
+
+-----
+
 ## v1.2.0 — 2026-04-05
 
 ### Added

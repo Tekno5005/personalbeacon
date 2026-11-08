@@ -3,10 +3,12 @@ package net.tekno.personalbeacon;
 import net.fabricmc.fabric.api.networking.v1.PacketByteBufs;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.minecraft.network.PacketByteBuf;
+import net.minecraft.screen.BeaconScreenHandler;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.math.BlockPos;
+import net.tekno.personalbeacon.mixin.BeaconScreenHandlerAccessor;
 
 import java.util.Map;
 import java.util.Set;
@@ -69,13 +71,22 @@ public class ModNetworking {
             });
         });
 
-        // C2S: client opened BeaconAccessScreen, wants current data
-        ServerPlayNetworking.registerGlobalReceiver(C2S_REQUEST_SYNC, (server, player, handler, buf, responseSender) -> {
-            BlockPos beaconPos = buf.readBlockPos();
-            PersonalBeaconMod.LOGGER.debug("Sync requested by {} for beacon at {}",
-                player.getName().getString(), beaconPos);
-            server.execute(() -> sendSyncPacket(player, beaconPos));
-        });
+        // C2S: client opened BeaconAccessScreen, wants current data.
+        // The beacon pos comes from the player's open beacon screen on the server —
+        // the client-side screen handler has no position (its context is EMPTY).
+        ServerPlayNetworking.registerGlobalReceiver(C2S_REQUEST_SYNC, (server, player, handler, buf, responseSender) ->
+            server.execute(() -> {
+                if (!(player.currentScreenHandler instanceof BeaconScreenHandler beaconHandler)) {
+                    PersonalBeaconMod.LOGGER.warn("Player {} requested beacon sync without an open beacon screen",
+                        player.getName().getString());
+                    return;
+                }
+                ((BeaconScreenHandlerAccessor) beaconHandler).personalbeacon$getContext().run((world, beaconPos) -> {
+                    PersonalBeaconMod.LOGGER.debug("Sync requested by {} for beacon at {}",
+                        player.getName().getString(), beaconPos);
+                    sendSyncPacket(player, beaconPos);
+                });
+            }));
 
         // C2S: player wants to add/remove a co-manager (owner toggle)
         // Packet layout: BlockPos beaconPos, UUID targetUUID, boolean add
