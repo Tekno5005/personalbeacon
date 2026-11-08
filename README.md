@@ -6,7 +6,7 @@
 
   * **Granular Access Control:** Restrict Beacon effects to specific players via an integrated list.
   * **Integrated GUI:** Manage player access directly through a custom button injected into the vanilla Beacon interface.
-  * **Custom Texture System:** All GUI panels and buttons use custom PNG textures (`window1`, `window2`, `window3`, `Button.png`) that can be replaced by resource packs.
+  * **Custom Texture System:** All GUI panels and buttons use custom PNG textures (`window1`, `window2`, `window3`, `Button.png`) that can be replaced by resource packs. Panel textures are drawn 1:1 at their own pixel size (`custom_beacon_gui` 300×240, `window1` 280×41, `window2` 280×50, `window3` 265×22), so replacements should keep these sizes.
   * **In-Game GUI Editor:** Reposition and resize every UI element live with the built-in layout editor — no restarts needed.
   * **Multi-Language Support:** Fully translated into English, Turkish, French, and Spanish.
   * **Smart Fallback:** If no restrictions are configured for a given Beacon, it defaults to vanilla behavior (all players within range receive effects).

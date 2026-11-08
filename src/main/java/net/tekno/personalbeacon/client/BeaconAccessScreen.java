@@ -65,8 +65,6 @@ public class BeaconAccessScreen extends Screen {
 
     private static final Identifier GUI_TEXTURE =
         new Identifier("personalbeacon", "textures/gui/custom_beacon_gui.png");
-    private static final int TEXTURE_W = 352;
-    private static final int TEXTURE_H = 334;
 
     private static final Identifier WINDOW1_TEXTURE =
         new Identifier("personalbeacon", "textures/gui/window1.png");
@@ -167,8 +165,8 @@ public class BeaconAccessScreen extends Screen {
     @Override
     protected void init() {
         // Scale down from the 300×240 design size to fit within the screen (20 px margin each side)
-        int availW = this.width  - 40;
-        int availH = this.height - 40;
+        int availW = this.width  - 20;
+        int availH = this.height - 20;
         panelScale = Math.min(1.0f, Math.min(availW / 300f, availH / 240f));
         panelW = Math.round(300 * panelScale);
         panelH = Math.round(240 * panelScale);
@@ -440,16 +438,10 @@ public class BeaconAccessScreen extends Screen {
     }
 
     /** Draws a PNG texture scaled to the given render size. */
+    /** Draws the whole texture into the given rect. 1:1 (crisp) when the PNG has exactly that size. */
     private void drawWindowTexture(DrawContext ctx, Identifier texture,
-                                   int x, int y, int renderW, int renderH,
-                                   int texW, int texH) {
-        float sx = (float) renderW / texW;
-        float sy = (float) renderH / texH;
-        ctx.getMatrices().push();
-        ctx.getMatrices().translate(x, y, 0);
-        ctx.getMatrices().scale(sx, sy, 1.0f);
-        ctx.drawTexture(texture, 0, 0, 0, 0, texW, texH, texW, texH);
-        ctx.getMatrices().pop();
+                                   int x, int y, int renderW, int renderH) {
+        ctx.drawTexture(texture, x, y, 0, 0, renderW, renderH, renderW, renderH);
     }
 
     @Override
@@ -457,20 +449,14 @@ public class BeaconAccessScreen extends Screen {
         this.renderBackground(context);
         GuiLayoutConfig cfg = GuiLayoutConfig.get();
 
-        // ── Main background ───────────────────────────────────────────────────
-        float scaleX = (float) panelW / TEXTURE_W;
-        float scaleY = (float) panelH / TEXTURE_H;
-        context.getMatrices().push();
-        context.getMatrices().translate(panelX, panelY, 0);
-        context.getMatrices().scale(scaleX, scaleY, 1.0f);
-        context.drawTexture(GUI_TEXTURE, 0, 0, 0, 0, TEXTURE_W, TEXTURE_H, TEXTURE_W, TEXTURE_H);
-        context.getMatrices().pop();
+        // ── Main background (PNG is 300x240 = the panel's design size) ─────────
+        drawWindowTexture(context, GUI_TEXTURE, panelX, panelY, panelW, panelH);
 
         // ── Window 1: header overlay ──────────────────────────────────────────
         GuiLayoutConfig.WindowEntry w1 = cfg.window1;
         drawWindowTexture(context, WINDOW1_TEXTURE,
             panelX + sc(w1.offsetX), panelY + sc(w1.offsetY),
-            sc(w1.width), sc(w1.height), w1.textureWidth, w1.textureHeight);
+            sc(w1.width), sc(w1.height));
 
         // ── Title + coordinates ───────────────────────────────────────────────
         GuiLayoutConfig.TextEntry tt = cfg.titleText;
@@ -492,7 +478,7 @@ public class BeaconAccessScreen extends Screen {
             GuiLayoutConfig.WindowEntry w2 = cfg.window2;
             drawWindowTexture(context, WINDOW2_TEXTURE,
                 panelX + sc(w2.offsetX), panelY + sc(w2.offsetY),
-                sc(w2.width), sc(w2.height), w2.textureWidth, w2.textureHeight);
+                sc(w2.width), sc(w2.height));
 
             GuiLayoutConfig.TextEntry st = cfg.singleplayerTitle;
             drawCenteredText(context,
@@ -513,7 +499,7 @@ public class BeaconAccessScreen extends Screen {
             GuiLayoutConfig.WindowEntry w2 = cfg.window2;
             drawWindowTexture(context, WINDOW2_TEXTURE,
                 panelX + sc(w2.offsetX), panelY + sc(w2.offsetY),
-                sc(w2.width), sc(w2.height), w2.textureWidth, w2.textureHeight);
+                sc(w2.width), sc(w2.height));
 
             GuiLayoutConfig.TextEntry ut = cfg.singleplayerTitle; // reuse same position
             drawCenteredText(context,
@@ -580,7 +566,7 @@ public class BeaconAccessScreen extends Screen {
             GuiLayoutConfig.WindowEntry w3 = cfg.window3;
             drawWindowTexture(context, WINDOW3_TEXTURE,
                 panelX + sc(w3.offsetX), rowY + sc(w3.offsetY),
-                sc(w3.width), sc(w3.height), w3.textureWidth, w3.textureHeight);
+                sc(w3.width), sc(w3.height));
 
             String prefix = entry.isOwner ? "★ " : (idx + 1) + ". ";
             String nameLabel = prefix + entry.name;

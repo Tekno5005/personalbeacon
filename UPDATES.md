@@ -21,6 +21,8 @@ Format follows [Semantic Versioning](https://semver.org/).
 - **Co-managers did not receive effects** — the screen said "Owners always receive beacon effects" and locked their toggle, but the effect check only looked at the allowed list, and co-managers added with ★ were not on it. Owners and co-managers now always receive a restricted beacon's effects and are listed first.
 - **View-only screen looked editable** — players who cannot manage a beacon saw active toggle and ★ buttons that did nothing. They are now inactive and show "You don't have permission to manage this beacon".
 
+- **Distorted panel textures** — the panel textures were stretched to their on-screen size with different horizontal and vertical factors (`custom_beacon_gui.png` 352×334 → 300×240, `window3.png` 252×31 → 265×22, …). The 1-pixel borders became uneven and the corners warped. On top of that, the 20 px screen margin made the 300×240 panel scale to 0.958 on the most common setup (1080p, auto GUI scale = 480×270). The textures are now regenerated at exactly their drawn size from the same pixel art (corners and notches copied, edges extended). They are drawn 1:1, and the margin is 10 px, so the panel stays 1:1 at 1080p. The unused `textureWidth`/`textureHeight` layout fields are removed.
+
 ### Changed
 - **Mod compatibility** — `BeaconBlockEntityMixin` no longer uses `@Inject(HEAD, cancellable = true)`. It now filters the player list returned by `World.getNonSpectatingEntities` with MixinExtras `@ModifyExpressionValue`, so vanilla logic stays intact and other mods modifying the same code chain with it.
 - `BeaconScreenHandlerAccessor` is now a real `@Accessor` interface for the handler's `context` field.
