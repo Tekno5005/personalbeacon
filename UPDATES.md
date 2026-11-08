@@ -12,10 +12,15 @@ Format follows [Semantic Versioning](https://semver.org/).
 - **Manage Access had no beacon position in multiplayer** — the client-side `BeaconScreenHandler` is built with `ScreenHandlerContext.EMPTY`, so the position was only ever captured in singleplayer (same JVM as the server). `C2S_REQUEST_SYNC` now carries no payload; the server resolves the position from the player's open beacon screen and returns it in `S2C_SYNC_ACCESS`.
 - **Wrong effect level on restricted beacons** — the mod re-implemented `applyPlayerEffects` and used amplifier `beaconLevel - 1` (e.g. Haste IV on a level-4 beacon). Vanilla uses amplifier 0, or 1 only for the level-4 primary upgrade. Range (vanilla box + full-height column) and spectator handling also differed.
 
+- **`allowNonOpManagement: false` let everyone manage every beacon** — the owner check only ran when the setting was `true`, so `false` skipped it entirely. Now `false` means only operators can manage beacons, and the same rule is used for adding/removing players, co-managers and "Open to All". A rejected request sends a fresh sync so the screen shows the real state.
+- **Clients could rename other players** — `C2S_UPDATE_ACCESS` stored the player name sent by the client, so a modified client could overwrite any offline player's cached name (which `/personalbeacon add <name>` uses to find players). The server now uses only names it cached itself and rejects unknown players.
+- **Access data left behind by destroyed beacons** — data was only purged when a player broke the beacon, so a beacon removed by an explosion or `/setblock` left its restrictions behind for any new beacon placed there. Cleanup now hooks `WorldChunk.removeBlockEntity`, which every block replacement goes through; chunk unloading uses a different path (`WorldChunk.clear`), so unloaded beacons keep their data.
+- **LAN worlds: first click took over a beacon** — on an integrated server (singleplayer, also when opened to LAN) the first player to right-click an unrestricted beacon was made its owner and only allowed player, so other LAN players lost its effects. This auto-add is removed; it could not prevent any lock-out (it only ran on unrestricted beacons).
+
 ### Changed
 - **Mod compatibility** — `BeaconBlockEntityMixin` no longer uses `@Inject(HEAD, cancellable = true)`. It now filters the player list returned by `World.getNonSpectatingEntities` with MixinExtras `@ModifyExpressionValue`, so vanilla logic stays intact and other mods modifying the same code chain with it.
 - `BeaconScreenHandlerAccessor` is now a real `@Accessor` interface for the handler's `context` field.
-- **Network protocol** — `C2S_REQUEST_SYNC` payload changed (empty), and `S2C_SYNC_ACCESS` now sends owners with names instead of the full player-name cache. Client and server must run the same mod version.
+- **Network protocol** — `C2S_REQUEST_SYNC` payload changed (empty), `C2S_UPDATE_ACCESS` no longer carries a player name, and `S2C_SYNC_ACCESS` now sends owners with names instead of the full player-name cache. Client and server must run the same mod version.
 
 ### Performance
 - **Smaller sync packet** — `S2C_SYNC_ACCESS` sent the name of every player who ever joined, on every beacon-screen open. That grows without limit and would exceed vanilla's 1 MiB custom-payload limit at roughly 30–50k known players. It now sends only owner names; allowed players already carried their names.
@@ -24,6 +29,7 @@ Format follows [Semantic Versioning](https://semver.org/).
 - **`isSelfOwner()`** — scanned the whole tab list by username on every call (several times per row and every frame). It now checks the local player's UUID directly, which is also the value the server compares.
 
 ### Removed
+- Config settings `maxPlayersPerBeacon`, `skipDistanceCheckInSingleplayer` and `testModeDefault` — they were documented but never read by the code. Existing config files still load; the keys are ignored.
 - Dead code: `BeaconAccessScreen.receiveAllowedPlayers()`, `fillRect()`, `drawBorder()`, unused color constants, and the deprecated `getOwner()` in `BeaconAccessData` / `BeaconAccessManager` (use `getPrimaryOwner()`).
 - Leftover GUI layout entries `addPlayersButton`, `emptyStateBox`, `emptyStateTitle`, `emptyStateDesc` (their UI was removed in v1.2.0 but they were still editable in the GUI editor). Existing layout files still load; the unknown keys are ignored.
 - Client-side toggle queue for clicks made before server data arrived. Action buttons now appear once the beacon's data is received, so every action is based on the server's current state.

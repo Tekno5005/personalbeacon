@@ -326,7 +326,6 @@ public class BeaconAccessScreen extends Screen {
         buf.writeBlockPos(beaconPos);
         buf.writeUuid(uuid);
         buf.writeBoolean(add);
-        buf.writeString(name); // send name so server can cache it
         ClientPlayNetworking.send(ModNetworking.C2S_UPDATE_ACCESS, buf);
 
         if (add) allowedPlayers.put(uuid, name);

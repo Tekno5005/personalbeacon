@@ -2,13 +2,7 @@ package net.tekno.personalbeacon;
 
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerEntityEvents;
-import net.fabricmc.fabric.api.event.player.PlayerBlockBreakEvents;
-import net.fabricmc.fabric.api.event.player.UseBlockCallback;
-import net.minecraft.block.Blocks;
-import net.minecraft.entity.Entity;
 import net.minecraft.server.network.ServerPlayerEntity;
-import net.minecraft.util.ActionResult;
-import net.minecraft.util.math.BlockPos;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -33,40 +27,7 @@ public class PersonalBeaconMod implements ModInitializer {
             }
         });
 
-        // Singleplayer: auto-add the player when they right-click an unrestricted beacon.
-        // No sync is sent here — the client only accepts sync data while BeaconAccessScreen
-        // is open, and that screen requests its own sync (C2S_REQUEST_SYNC).
-        UseBlockCallback.EVENT.register((player, world, hand, hitResult) -> {
-            if (world.isClient()) return ActionResult.PASS;
-            BlockPos pos = hitResult.getBlockPos();
-            if (world.getBlockState(pos).isOf(Blocks.BEACON)) {
-                if (player instanceof ServerPlayerEntity serverPlayer) {
-                    LOGGER.debug("Player {} right-clicked beacon at {}", serverPlayer.getName().getString(), pos);
-                    world.getServer().execute(() -> {
-                        // Singleplayer: if beacon has no restrictions, auto-add the player
-                        // Prevents softlock where nobody receives effects
-                        if (!world.getServer().isDedicated()) {
-                            BeaconAccessManager manager = BeaconAccessManager.get(world.getServer());
-                            if (!manager.isRestricted(pos)) {
-                                manager.addPlayer(pos, serverPlayer.getUuid(), serverPlayer.getName().getString());
-                                LOGGER.info("Singleplayer: auto-added {} as beacon owner at {}",
-                                    serverPlayer.getName().getString(), pos);
-                            }
-                        }
-                    });
-                }
-            }
-            return ActionResult.PASS;
-        });
-
-        // Clean up data when beacon is broken
-        PlayerBlockBreakEvents.AFTER.register((world, player, pos, state, blockEntity) -> {
-            if (state.isOf(Blocks.BEACON)) {
-                BeaconAccessManager manager = BeaconAccessManager.get(world.getServer());
-                manager.removeBeacon(pos);
-                LOGGER.info("Cleaned up access data for broken beacon at {}", pos);
-            }
-        });
+        // Access data of removed beacons is cleaned up in WorldChunkMixin.
 
         LOGGER.info("Personal Beacon mod initialized.");
     }

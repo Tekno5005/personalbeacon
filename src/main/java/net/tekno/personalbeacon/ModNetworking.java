@@ -29,11 +29,11 @@ public class ModNetworking {
     public static void registerServerPackets() {
 
         // C2S: player wants to add/remove someone from a beacon
+        // Packet layout: BlockPos beaconPos, UUID targetUUID, boolean add
         ServerPlayNetworking.registerGlobalReceiver(C2S_UPDATE_ACCESS, (server, player, handler, buf, responseSender) -> {
             BlockPos beaconPos = buf.readBlockPos();
             UUID targetUUID   = buf.readUuid();
             boolean add       = buf.readBoolean();
-            String targetName = buf.readString(); // name sent by client
 
             server.execute(() -> {
                 if (!isPlayerNearBeacon(player, beaconPos)) {
@@ -44,29 +44,31 @@ public class ModNetworking {
 
                 BeaconAccessManager manager = BeaconAccessManager.get(server);
 
-                // Owner check: if beacon has an owner and this player is not an owner, block
-                if (PersonalBeaconConfig.get().allowNonOpManagement) {
-                    if (manager.hasOwner(beaconPos)
-                            && !manager.isOwner(beaconPos, player.getUuid())
-                            && !player.hasPermissionLevel(2)) {
-                        PersonalBeaconMod.LOGGER.warn("Player {} is not an owner of beacon at {}",
-                            player.getName().getString(), beaconPos);
-                        return;
-                    }
+                if (!canManage(manager, player, beaconPos)) {
+                    PersonalBeaconMod.LOGGER.warn("Player {} has no permission to manage beacon at {}",
+                        player.getName().getString(), beaconPos);
+                    sendSyncPacket(player, beaconPos); // revert the client's optimistic change
+                    return;
                 }
 
                 if (add) {
-                    // Resolve name: online player name takes priority over client-sent name
-                    ServerPlayerEntity online = server.getPlayerManager().getPlayer(targetUUID);
-                    String resolvedName = online != null ? online.getName().getString() : targetName;
-                    manager.addPlayer(beaconPos, targetUUID, resolvedName);
+                    // The name comes from the server's cache only (filled when a player joins),
+                    // never from the client, so a client cannot rename other players.
+                    String targetName = manager.getPlayerNames().get(targetUUID);
+                    if (targetName == null) {
+                        PersonalBeaconMod.LOGGER.warn("Player {} tried to add unknown player {} to beacon at {}",
+                            player.getName().getString(), targetUUID, beaconPos);
+                        sendSyncPacket(player, beaconPos);
+                        return;
+                    }
+                    manager.addPlayer(beaconPos, targetUUID, targetName);
                 } else {
                     manager.removePlayer(beaconPos, targetUUID);
                 }
 
                 PersonalBeaconMod.LOGGER.info("Player {} {} {} ({}) for beacon at {}",
                     player.getName().getString(), add ? "added" : "removed",
-                    targetName, targetUUID, beaconPos);
+                    manager.getPlayerName(targetUUID), targetUUID, beaconPos);
             });
         });
 
@@ -103,11 +105,10 @@ public class ModNetworking {
 
                 BeaconAccessManager manager = BeaconAccessManager.get(server);
 
-                // Only existing owners or ops can change owner status
-                if (!manager.isOwner(beaconPos, player.getUuid())
-                        && !player.hasPermissionLevel(2)) {
+                if (!canManage(manager, player, beaconPos)) {
                     PersonalBeaconMod.LOGGER.warn("Player {} has no permission to change owners of beacon at {}",
                         player.getName().getString(), beaconPos);
+                    sendSyncPacket(player, beaconPos); // clears the client's pending "…" state
                     return;
                 }
 
@@ -150,11 +151,10 @@ public class ModNetworking {
 
                 BeaconAccessManager manager = BeaconAccessManager.get(server);
 
-                if (manager.hasOwner(beaconPos)
-                        && !manager.isOwner(beaconPos, player.getUuid())
-                        && !player.hasPermissionLevel(2)) {
+                if (!canManage(manager, player, beaconPos)) {
                     PersonalBeaconMod.LOGGER.warn("Player {} has no permission to unrestrict beacon at {}",
                         player.getName().getString(), beaconPos);
+                    sendSyncPacket(player, beaconPos); // revert the client's optimistic change
                     return;
                 }
 
@@ -221,6 +221,16 @@ public class ModNetworking {
         for (ServerPlayerEntity player : server.getPlayerManager().getPlayerList()) {
             ServerPlayNetworking.send(player, S2C_TEST_MODE, buf);
         }
+    }
+
+    /**
+     * Ops can always manage a beacon. Other players only when allowNonOpManagement is on,
+     * and once the beacon has an owner, only its owners (co-managers included).
+     */
+    private static boolean canManage(BeaconAccessManager manager, ServerPlayerEntity player, BlockPos beaconPos) {
+        if (player.hasPermissionLevel(2)) return true;
+        if (!PersonalBeaconConfig.get().allowNonOpManagement) return false;
+        return !manager.hasOwner(beaconPos) || manager.isOwner(beaconPos, player.getUuid());
     }
 
     private static boolean isPlayerNearBeacon(ServerPlayerEntity player, BlockPos beaconPos) {

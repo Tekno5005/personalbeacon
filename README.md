@@ -10,8 +10,7 @@
   * **In-Game GUI Editor:** Reposition and resize every UI element live with the built-in layout editor — no restarts needed.
   * **Multi-Language Support:** Fully translated into English, Turkish, French, and Spanish.
   * **Smart Fallback:** If no restrictions are configured for a given Beacon, it defaults to vanilla behavior (all players within range receive effects).
-  * **Automatic State Cleanup:** When a Beacon is broken, its associated access data is automatically purged from the world data to prevent memory leaks and state bloat.
-  * **Softlock Prevention:** In singleplayer worlds, the first interaction automatically adds the player to the access list to prevent accidental self-exclusion.
+  * **Automatic State Cleanup:** When a Beacon is removed from the world (broken, blown up, or replaced by commands), its access data is automatically purged. Unloading a chunk keeps the data.
   * **Distance Validation:** Configurable interaction range (`maxManageDistance`) prevents exploitation and remote management on multiplayer servers.
 
 -----
@@ -70,10 +69,8 @@ All user-facing strings use `Text.translatable()`. To add a new language, create
 
 The mod behavior can be modified via `config/personalbeacon.json`:
 
-  * `maxPlayersPerBeacon`: Maximum number of players allowed on a single Beacon's list (0 = Unlimited).
-  * `maxManageDistance`: Maximum block distance allowed for a player to modify a Beacon's access list (Default: 8.0).
-  * `allowNonOpManagement`: Determines if non-operator players can manage the Beacons they interact with.
-  * `skipDistanceCheckInSingleplayer`: Bypasses distance validation in singleplayer environments.
+  * `maxManageDistance`: Maximum block distance allowed for a player to modify a Beacon's access list on a dedicated server (Default: 8.0, 0 = no limit). Singleplayer/LAN worlds skip this check.
+  * `allowNonOpManagement`: When `true` (default), non-operator players can manage beacons — only the owners once a beacon has an owner. When `false`, only operators can manage beacons.
 
 -----
 
@@ -97,7 +94,7 @@ The mod behavior can be modified via `config/personalbeacon.json`:
 
 ## Known Issues & Technical Constraints
 
-  * **State Volatility:** The `/personalbeacon test` mode toggle is volatile. It defaults to `false` upon server restart as defined by `testModeDefault`.
+  * **State Volatility:** The `/personalbeacon test` mode toggle is volatile. It defaults to `false` upon server restart.
 
 -----
 
