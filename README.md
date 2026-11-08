@@ -95,6 +95,8 @@ The mod behavior can be modified via `config/personalbeacon.json`:
 ## Known Issues & Technical Constraints
 
   * **State Volatility:** The `/personalbeacon test` mode toggle is volatile. It defaults to `false` upon server restart.
+  * **Dimensions share coordinates:** Access data is keyed by position only, so beacons at the same coordinates in different dimensions share one access list ([#3](https://github.com/Tekno5005/personalbeacon/issues/3)).
+  * **Manage Access button icon:** The 20×20 button texture is drawn at 11×11 and looks distorted ([#4](https://github.com/Tekno5005/personalbeacon/issues/4)).
 
 -----
 

@@ -5,13 +5,26 @@ Format follows [Semantic Versioning](https://semver.org/).
 
 -----
 
-## Unreleased
+## v2.0.0 — 2026-11-08
+
+### Upgrade notes
+- **Client and server must both run 2.0.0.** The network packets changed, so a 1.2.0 client cannot manage beacons on a 2.0.0 server (and the other way round).
+- **`allowNonOpManagement: false` now means only operators can manage beacons.** In 1.2.0 this value skipped the owner check entirely.
+- **Removed config keys:** `maxPlayersPerBeacon`, `skipDistanceCheckInSingleplayer`, `testModeDefault`. They never had any effect, and old config files still load.
+- **Resource packs** that replace the panel textures should use the new sizes, because textures are now drawn 1:1:
+
+  | Texture | Size |
+  |---|---|
+  | `custom_beacon_gui` | 300×240 |
+  | `window1` | 280×41 |
+  | `window2` | 280×50 |
+  | `window3` | 265×22 |
+- World data is unchanged. Existing beacon access lists keep working.
 
 ### Fixed
 - **Dedicated server crash on opening a beacon** — `BeaconScreenHandlerAccessor` (a common mixin) called the client-only `BeaconPosHolder` (`@Environment(CLIENT)`). Fabric Loader refuses to load such a class on a dedicated server (`Cannot load class … in environment type SERVER`). `BeaconPosHolder` is removed.
 - **Manage Access had no beacon position in multiplayer** — the client-side `BeaconScreenHandler` is built with `ScreenHandlerContext.EMPTY`, so the position was only ever captured in singleplayer (same JVM as the server). `C2S_REQUEST_SYNC` now carries no payload; the server resolves the position from the player's open beacon screen and returns it in `S2C_SYNC_ACCESS`.
 - **Wrong effect level on restricted beacons** — the mod re-implemented `applyPlayerEffects` and used amplifier `beaconLevel - 1` (e.g. Haste IV on a level-4 beacon). Vanilla uses amplifier 0, or 1 only for the level-4 primary upgrade. Range (vanilla box + full-height column) and spectator handling also differed.
-
 - **`allowNonOpManagement: false` let everyone manage every beacon** — the owner check only ran when the setting was `true`, so `false` skipped it entirely. Now `false` means only operators can manage beacons, and the same rule is used for adding/removing players, co-managers and "Open to All". A rejected request sends a fresh sync so the screen shows the real state.
 - **Clients could rename other players** — `C2S_UPDATE_ACCESS` stored the player name sent by the client, so a modified client could overwrite any offline player's cached name (which `/personalbeacon add <name>` uses to find players). The server now uses only names it cached itself and rejects unknown players.
 - **Access data left behind by destroyed beacons** — data was only purged when a player broke the beacon, so a beacon removed by an explosion or `/setblock` left its restrictions behind for any new beacon placed there. Cleanup now hooks `WorldChunk.removeBlockEntity`, which every block replacement goes through; chunk unloading uses a different path (`WorldChunk.clear`), so unloaded beacons keep their data.
