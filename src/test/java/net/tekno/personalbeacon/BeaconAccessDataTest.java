@@ -26,6 +26,50 @@ class BeaconAccessDataTest {
     }
 
     // -------------------------------------------------------
+    // Owners always receive effects
+    // -------------------------------------------------------
+
+    @Test
+    void isAllowed_restricted_ownerNotOnListIsAllowed() {
+        BeaconAccessData data = new BeaconAccessData();
+        BlockPos pos = new BlockPos(0, 64, 0);
+        UUID owner = UUID.randomUUID();
+        UUID friend = UUID.randomUUID();
+
+        data.setOwner(pos, owner);
+        data.addPlayer(pos, friend, "Friend");
+
+        assertTrue(data.isAllowed(pos, owner));
+        assertTrue(data.isAllowed(pos, friend));
+        assertFalse(data.isAllowed(pos, UUID.randomUUID()));
+    }
+
+    @Test
+    void isAllowed_restricted_coOwnerNotOnListIsAllowed() {
+        BeaconAccessData data = new BeaconAccessData();
+        BlockPos pos = new BlockPos(0, 64, 0);
+        UUID owner = UUID.randomUUID();
+        UUID coOwner = UUID.randomUUID();
+
+        data.setOwner(pos, owner);
+        data.addOwner(pos, coOwner);
+        data.addPlayer(pos, UUID.randomUUID(), "Friend");
+
+        assertTrue(data.isAllowed(pos, coOwner));
+    }
+
+    @Test
+    void isAllowed_ownerOnly_beaconStaysUnrestricted() {
+        BeaconAccessData data = new BeaconAccessData();
+        BlockPos pos = new BlockPos(0, 64, 0);
+
+        data.setOwner(pos, UUID.randomUUID());
+
+        assertFalse(data.isRestricted(pos));
+        assertTrue(data.isAllowed(pos, UUID.randomUUID()));
+    }
+
+    // -------------------------------------------------------
     // addPlayer
     // -------------------------------------------------------
 

@@ -135,17 +135,23 @@ public class BeaconAccessScreen extends Screen {
 
         Set<UUID> seen = new LinkedHashSet<>();
 
-        // 1. Allowed players first (may include offline)
-        for (Map.Entry<UUID, String> entry : allowedPlayers.entrySet()) {
+        // 1. Owners first — they always receive effects (may include offline)
+        for (Map.Entry<UUID, String> entry : ownerNames.entrySet()) {
             UUID uuid = entry.getKey();
-            String name = entry.getValue();
-            boolean isOwner = ownerNames.containsKey(uuid);
             boolean isPrimary = uuid.equals(primaryOwnerUUID);
-            displayList.add(new DisplayEntry(uuid, name, onlineSet.contains(uuid), true, isOwner, isPrimary));
+            displayList.add(new DisplayEntry(uuid, entry.getValue(), onlineSet.contains(uuid), true, true, isPrimary));
             seen.add(uuid);
         }
 
-        // 2. Online players not yet in allowed list
+        // 2. Allowed players (may include offline)
+        for (Map.Entry<UUID, String> entry : allowedPlayers.entrySet()) {
+            UUID uuid = entry.getKey();
+            if (seen.contains(uuid)) continue;
+            displayList.add(new DisplayEntry(uuid, entry.getValue(), onlineSet.contains(uuid), true, false, false));
+            seen.add(uuid);
+        }
+
+        // 3. Online players not yet listed
         if (onlinePlayers != null) {
             for (PlayerListEntry entry : onlinePlayers) {
                 UUID uuid = entry.getProfile().getId();
@@ -270,16 +276,19 @@ public class BeaconAccessScreen extends Screen {
             boolean isOwnerRow = entry.isOwner;
             String tipText = isOwnerRow
                 ? Text.translatable("personalbeacon.screen.owner_always_allowed").getString()
-                : (entry.allowed ? tb.tooltipAllowed : tb.tooltipBlocked);
+                : !canToggle
+                    ? Text.translatable("personalbeacon.feedback.no_permission").getString()
+                    : (entry.allowed ? tb.tooltipAllowed : tb.tooltipBlocked);
             ButtonWidget toggleBtn = ButtonWidget.builder(
                 entry.allowed
                     ? Text.translatable("personalbeacon.screen.allowed")
                     : Text.translatable("personalbeacon.screen.blocked"),
-                b -> { if (canToggle && !isOwnerRow) sendToggle(entry.uuid, entry.name, !entry.allowed); })
+                b -> sendToggle(entry.uuid, entry.name, !entry.allowed))
                 .dimensions(panelX + panelW - sc(tb.offsetXFromRight), rowY + sc(tb.rowOffsetY), sc(tb.width), sc(tb.height))
                 .tooltip(Tooltip.of(Text.literal(tipText)))
                 .build();
-            if (isOwnerRow) toggleBtn.active = false;
+            // Owners can't be toggled; viewers who can't manage see inactive controls
+            toggleBtn.active = canToggle && !isOwnerRow;
             this.addDrawableChild(toggleBtn);
 
             // ── Owner star button (★ / ☆) — Issue 3 ──────────────────────────
@@ -307,15 +316,15 @@ public class BeaconAccessScreen extends Screen {
                     starBtn.active = false;
                     this.addDrawableChild(starBtn);
                 } else {
-                    this.addDrawableChild(ButtonWidget.builder(Text.literal(starLabel),
-                        b -> {
-                            if (selfCanManageOwners) {
-                                sendOwnerToggle(entry.uuid, !entry.isOwner);
-                            }
-                        })
+                    ButtonWidget starBtn = ButtonWidget.builder(Text.literal(starLabel),
+                        b -> sendOwnerToggle(entry.uuid, !entry.isOwner))
                         .dimensions(panelX + panelW - sc(otb.offsetXFromRight), rowY + sc(otb.rowOffsetY), sc(otb.width), sc(otb.height))
-                        .tooltip(Tooltip.of(Text.literal(starTip)))
-                        .build());
+                        .tooltip(Tooltip.of(selfCanManageOwners
+                            ? Text.literal(starTip)
+                            : Text.translatable("personalbeacon.feedback.no_permission")))
+                        .build();
+                    starBtn.active = selfCanManageOwners;
+                    this.addDrawableChild(starBtn);
                 }
             }
         }

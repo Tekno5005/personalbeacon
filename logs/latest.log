@@ -1,0 +1,4 @@
+[21:20:56] [Test worker/WARN]: Skipping malformed UUID: not-a-valid-uuid
+[21:20:56] [Test worker/WARN]: Skipping malformed UUID: bad-1
+[21:20:56] [Test worker/WARN]: Skipping malformed UUID: bad-2
+[21:20:56] [Test worker/WARN]: Skipping malformed owner UUID for beacon at BlockPos{x=0, y=64, z=0}

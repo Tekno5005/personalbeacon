@@ -122,12 +122,14 @@ public class DebugCommand {
         // Try to find online player first
         ServerPlayerEntity online = src.getServer().getPlayerManager().getPlayer(playerName);
         if (online != null) {
+            if (!manager.hasOwner(pos)) manager.setOwner(pos, online.getUuid());
             manager.addPlayer(pos, online.getUuid(), online.getName().getString());
             src.sendFeedback(() -> Text.literal("§aAdded §f" + playerName + " §ato beacon at " + posStr(pos)), false);
         } else {
             // Player is offline — look up UUID from name cache
             UUID uuid = findUUIDByName(manager, playerName);
             if (uuid != null) {
+                if (!manager.hasOwner(pos)) manager.setOwner(pos, uuid);
                 manager.addPlayer(pos, uuid, playerName);
                 src.sendFeedback(() -> Text.literal("§aAdded offline player §f" + playerName + " §ato beacon at " + posStr(pos)), false);
             } else {

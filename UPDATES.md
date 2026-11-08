@@ -17,6 +17,10 @@ Format follows [Semantic Versioning](https://semver.org/).
 - **Access data left behind by destroyed beacons** — data was only purged when a player broke the beacon, so a beacon removed by an explosion or `/setblock` left its restrictions behind for any new beacon placed there. Cleanup now hooks `WorldChunk.removeBlockEntity`, which every block replacement goes through; chunk unloading uses a different path (`WorldChunk.clear`), so unloaded beacons keep their data.
 - **LAN worlds: first click took over a beacon** — on an integrated server (singleplayer, also when opened to LAN) the first player to right-click an unrestricted beacon was made its owner and only allowed player, so other LAN players lost its effects. This auto-add is removed; it could not prevent any lock-out (it only ran on unrestricted beacons).
 
+- **The wrong player became the owner** — when a beacon without an owner was restricted, the first player *added to the list* became its owner instead of the player doing it, so adding a friend first locked yourself out of managing. The player who restricts an unowned beacon now becomes its owner. `/personalbeacon add` keeps its behavior (the added player becomes owner if there is none).
+- **Co-managers did not receive effects** — the screen said "Owners always receive beacon effects" and locked their toggle, but the effect check only looked at the allowed list, and co-managers added with ★ were not on it. Owners and co-managers now always receive a restricted beacon's effects and are listed first.
+- **View-only screen looked editable** — players who cannot manage a beacon saw active toggle and ★ buttons that did nothing. They are now inactive and show "You don't have permission to manage this beacon".
+
 ### Changed
 - **Mod compatibility** — `BeaconBlockEntityMixin` no longer uses `@Inject(HEAD, cancellable = true)`. It now filters the player list returned by `World.getNonSpectatingEntities` with MixinExtras `@ModifyExpressionValue`, so vanilla logic stays intact and other mods modifying the same code chain with it.
 - `BeaconScreenHandlerAccessor` is now a real `@Accessor` interface for the handler's `context` field.
