@@ -5,6 +5,29 @@ Format follows [Semantic Versioning](https://semver.org/).
 
 -----
 
+## Unreleased
+
+### Added
+- **Redesigned access screen.** It is drawn in code on top of the 1:1 panel texture, so it stays crisp at every GUI scale. It has:
+  - your 43×43 beacon icon
+  - a status badge (`N ALLOWED` / `OPEN TO ALL` / `SINGLEPLAYER`)
+  - player heads with online/offline status
+  - a padlock switch per player (ON / OFF / OWNER) and a ★ co-manager button
+  - player search
+  - mouse-wheel scrolling with a scrollbar
+- **Sorting** by name, access or online status, remembered while the game runs. Rows keep their place when you toggle a player; the order is only applied when you pick a sort.
+- **Separate screens** for loading, open-to-all, view-only and singleplayer:
+  - Loading: no actions until the server's data arrives.
+  - View only: dimmed list with inactive controls and a banner.
+- **"Open to All" asks for confirmation** (second click within 3 seconds).
+
+### Removed
+- **GUI layout editor**, the `/personalbeaconop edit` command and `config/personalbeacon_gui_layout.json`.
+- **`window1`/`window2`/`window3` textures.**
+- **Unused translation keys.**
+
+-----
+
 ## v2.0.0 — 2026-11-08
 
 ### Upgrade notes

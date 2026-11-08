@@ -6,8 +6,8 @@
 
   * **Granular Access Control:** Restrict Beacon effects to specific players via an integrated list.
   * **Integrated GUI:** Manage player access directly through a custom button injected into the vanilla Beacon interface.
-  * **Custom Texture System:** All GUI panels and buttons use custom PNG textures (`window1`, `window2`, `window3`, `Button.png`) that can be replaced by resource packs. Panel textures are drawn 1:1 at their own pixel size (`custom_beacon_gui` 300×240, `window1` 280×41, `window2` 280×50, `window3` 265×22), so replacements should keep these sizes.
-  * **In-Game GUI Editor:** Reposition and resize every UI element live with the built-in layout editor — no restarts needed.
+  * **Access Screen:** Player heads with online/offline status, a padlock switch per player (ON / OFF / OWNER), search, and sorting by name, access or online status. Toggling a player never moves their row.
+  * **Custom Textures:** The panel background (`custom_beacon_gui`, 300×240), the beacon icon (`beacon_icon`, 43×43) and the Manage Access button (`button.png`) are PNG textures that resource packs can replace. They are drawn 1:1, so replacements should keep these sizes.
   * **Multi-Language Support:** Fully translated into English, Turkish, French, and Spanish.
   * **Smart Fallback:** If no restrictions are configured for a given Beacon, it defaults to vanilla behavior (all players within range receive effects).
   * **Automatic State Cleanup:** When a Beacon is removed from the world (broken, blown up, or replaced by commands), its access data is automatically purged. Unloading a chunk keeps the data.
@@ -24,7 +24,6 @@
 | **Java Version** | 17 (Runtime) / 21 (Development) |
 | **Dependencies** | Fabric API |
 | **Configuration** | `config/personalbeacon.json` |
-| **GUI Layout** | `config/personalbeacon_gui_layout.json` |
 
 ### Architecture Overview
 
@@ -32,23 +31,6 @@ The mod utilizes `PersistentState` for server-side data persistence (`Map<BlockP
 
   * **Mixins:** Extends vanilla behavior by filtering the player list in `BeaconBlockEntity.applyPlayerEffects` (MixinExtras `@ModifyExpressionValue`, chains with other mods) and injecting into `BeaconScreen`. The beacon position is resolved server-side from the player's open `BeaconScreenHandler`.
   * **Networking:** Implements channels (`C2S_UPDATE_ACCESS`, `S2C_SYNC_ACCESS`, `C2S_REQUEST_SYNC`, `S2C_TEST_MODE`) for real-time state synchronization and GUI updates.
-
------
-
-## GUI Layout Editor
-
-The mod includes a built-in GUI editor for repositioning all UI elements without editing JSON files manually.
-
-### How to Use
-
-1. Run `/personalbeaconop edit` in chat to unlock the editor.
-2. Open any Beacon — you will see a **⚙** button on both the vanilla Beacon screen and the Access Control screen.
-3. Click **⚙** to open the editor. Select any element from the left panel and adjust its properties on the right.
-4. Click **Save & Close** — changes apply immediately.
-
-### Editable Elements
-
-Windows (`window1`, `window2`, `window3`), text positions (title, coordinates, owner, column headers), all buttons (close, scroll, access toggle, owner toggle, manage access), and the Manage Access button on the vanilla Beacon screen.
 
 -----
 
@@ -86,10 +68,6 @@ The mod behavior can be modified via `config/personalbeacon.json`:
   * `/personalbeacon clear <x> <y> <z>` - Deletes all access data for a specific beacon.
   * `/personalbeacon test` - Toggles the singleplayer restriction bypass.
 
-### Client Commands
-
-  * `/personalbeaconop edit` - Toggles the GUI Layout Editor (shows/hides the ⚙ button).
-
 -----
 
 ## Known Issues & Technical Constraints
@@ -111,7 +89,6 @@ The mod behavior can be modified via `config/personalbeacon.json`:
 
 ## Roadmap
 
-  * GUI search functionality for large server environments.
   * Modrinth publication refinements (including project icons).
   * Additional language support.
 
