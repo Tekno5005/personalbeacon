@@ -15,7 +15,18 @@ Format follows [Semantic Versioning](https://semver.org/).
 ### Changed
 - **Mod compatibility** — `BeaconBlockEntityMixin` no longer uses `@Inject(HEAD, cancellable = true)`. It now filters the player list returned by `World.getNonSpectatingEntities` with MixinExtras `@ModifyExpressionValue`, so vanilla logic stays intact and other mods modifying the same code chain with it.
 - `BeaconScreenHandlerAccessor` is now a real `@Accessor` interface for the handler's `context` field.
-- **Network protocol** — `C2S_REQUEST_SYNC` payload changed (empty). Client and server must run the same mod version.
+- **Network protocol** — `C2S_REQUEST_SYNC` payload changed (empty), and `S2C_SYNC_ACCESS` now sends owners with names instead of the full player-name cache. Client and server must run the same mod version.
+
+### Performance
+- **Smaller sync packet** — `S2C_SYNC_ACCESS` sent the name of every player who ever joined, on every beacon-screen open. That grows without limit and would exceed vanilla's 1 MiB custom-payload limit at roughly 30–50k known players. It now sends only owner names; allowed players already carried their names.
+- **No name caching on every sync** — `sendSyncPacket()` re-cached every online player's name. Every player already passes through `ServerEntityEvents.ENTITY_LOAD` when added to a world, which caches the name, so the loop was removed.
+- **No sync packet on beacon right-click** — the server sent `S2C_SYNC_ACCESS` on every beacon right-click, but the client only accepts it while `BeaconAccessScreen` is open, so it was always discarded.
+- **`isSelfOwner()`** — scanned the whole tab list by username on every call (several times per row and every frame). It now checks the local player's UUID directly, which is also the value the server compares.
+
+### Removed
+- Dead code: `BeaconAccessScreen.receiveAllowedPlayers()`, `fillRect()`, `drawBorder()`, unused color constants, and the deprecated `getOwner()` in `BeaconAccessData` / `BeaconAccessManager` (use `getPrimaryOwner()`).
+- Leftover GUI layout entries `addPlayersButton`, `emptyStateBox`, `emptyStateTitle`, `emptyStateDesc` (their UI was removed in v1.2.0 but they were still editable in the GUI editor). Existing layout files still load; the unknown keys are ignored.
+- Client-side toggle queue for clicks made before server data arrived. Action buttons now appear once the beacon's data is received, so every action is based on the server's current state.
 
 -----
 

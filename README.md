@@ -49,7 +49,7 @@ The mod includes a built-in GUI editor for repositioning all UI elements without
 
 ### Editable Elements
 
-Windows (`window1`, `window2`, `window3`), text positions (title, coordinates, owner, column headers), all buttons (close, add players, scroll, toggle, manage access), and the Manage Access button on the vanilla Beacon screen.
+Windows (`window1`, `window2`, `window3`), text positions (title, coordinates, owner, column headers), all buttons (close, scroll, access toggle, owner toggle, manage access), and the Manage Access button on the vanilla Beacon screen.
 
 -----
 

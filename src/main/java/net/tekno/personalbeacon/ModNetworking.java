@@ -10,7 +10,6 @@ import net.minecraft.util.Identifier;
 import net.minecraft.util.math.BlockPos;
 import net.tekno.personalbeacon.mixin.BeaconScreenHandlerAccessor;
 
-import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
@@ -169,31 +168,24 @@ public class ModNetworking {
 
     /**
      * Send S2C sync packet.
-     * Includes: beacon pos, primary owner UUID, all owner UUIDs, allowed list with names, all known player names.
+     * Includes: beacon pos, primary owner UUID, owners with names, allowed list with names.
+     * Online player names are cached on join (ENTITY_LOAD), so no caching is needed here.
      *
      * Packet layout:
      *   BlockPos beaconPos
      *   boolean  hasPrimaryOwner
      *   UUID     primaryOwnerUUID  (if hasPrimaryOwner)
      *   int      ownerCount
-     *   UUID[]   ownerUUIDs
-     *   int      allowedCount
      *   for each: UUID, String name
-     *   int      namesCacheCount
+     *   int      allowedCount
      *   for each: UUID, String name
      */
     public static void sendSyncPacket(ServerPlayerEntity player, BlockPos beaconPos) {
         BeaconAccessManager manager = BeaconAccessManager.get(player.getServer());
 
-        // Cache all online player names while we're here
-        for (ServerPlayerEntity p : player.getServer().getPlayerManager().getPlayerList()) {
-            manager.cachePlayerName(p.getUuid(), p.getName().getString());
-        }
-
         Set<UUID> allowed = manager.getAllowedPlayers(beaconPos);
         UUID primaryOwner = manager.getPrimaryOwner(beaconPos);
         Set<UUID> owners  = manager.getOwners(beaconPos);
-        Map<UUID, String> nameCache = manager.getPlayerNames();
 
         PacketByteBuf buf = PacketByteBufs.create();
         buf.writeBlockPos(beaconPos);
@@ -202,27 +194,23 @@ public class ModNetworking {
         buf.writeBoolean(primaryOwner != null);
         if (primaryOwner != null) buf.writeUuid(primaryOwner);
 
-        // All owners (co-managers including primary)
-        buf.writeInt(owners.size());
-        for (UUID ownerUuid : owners) buf.writeUuid(ownerUuid);
+        // All owners (co-managers including primary) with names
+        writePlayers(buf, owners, manager);
 
         // Allowed players with names
-        buf.writeInt(allowed.size());
-        for (UUID uuid : allowed) {
+        writePlayers(buf, allowed, manager);
+
+        PersonalBeaconMod.LOGGER.debug("Sending sync to {} — beacon {}, {} allowed, {} owners",
+            player.getName().getString(), beaconPos, allowed.size(), owners.size());
+        ServerPlayNetworking.send(player, S2C_SYNC_ACCESS, buf);
+    }
+
+    private static void writePlayers(PacketByteBuf buf, Set<UUID> uuids, BeaconAccessManager manager) {
+        buf.writeInt(uuids.size());
+        for (UUID uuid : uuids) {
             buf.writeUuid(uuid);
             buf.writeString(manager.getPlayerName(uuid));
         }
-
-        // Full name cache (for offline display)
-        buf.writeInt(nameCache.size());
-        for (Map.Entry<UUID, String> entry : nameCache.entrySet()) {
-            buf.writeUuid(entry.getKey());
-            buf.writeString(entry.getValue());
-        }
-
-        PersonalBeaconMod.LOGGER.debug("Sending sync to {} — beacon {}, {} allowed, {} owners, {} name-cache entries",
-            player.getName().getString(), beaconPos, allowed.size(), owners.size(), nameCache.size());
-        ServerPlayNetworking.send(player, S2C_SYNC_ACCESS, buf);
     }
 
     public static void sendTestModeToggle(MinecraftServer server) {

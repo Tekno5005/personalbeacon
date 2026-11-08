@@ -120,12 +120,6 @@ public class BeaconAccessData {
         return primaryOwners.get(pos);
     }
 
-    /** @deprecated Use {@link #getPrimaryOwner(BlockPos)} instead. */
-    @Deprecated
-    public UUID getOwner(BlockPos pos) {
-        return getPrimaryOwner(pos);
-    }
-
     public boolean hasOwner(BlockPos pos) {
         return primaryOwners.containsKey(pos);
     }

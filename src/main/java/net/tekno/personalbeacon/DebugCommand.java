@@ -93,7 +93,7 @@ public class DebugCommand {
         for (var entry : snapshot.entrySet()) {
             BlockPos pos = entry.getKey();
             Set<UUID> allowed = entry.getValue();
-            UUID owner = manager.getOwner(pos);
+            UUID owner = manager.getPrimaryOwner(pos);
             String ownerName = owner != null ? manager.getPlayerName(owner) : "none";
 
             src.sendFeedback(() -> Text.literal(

@@ -25,13 +25,10 @@ public class GuiEditorScreen extends Screen {
         "titleText", "coordsText", "ownerText",
         "singleplayerTitle", "singleplayerDesc",
         "columnPlayer", "columnAccess",
-        "closeButton", "addPlayersButton", "scrollUpButton", "scrollDownButton",
+        "closeButton", "scrollUpButton", "scrollDownButton",
         "toggleButton",
         "manageAccessButton",  // position on the vanilla BeaconScreen
-        "ownerToggleButton",   // ★/☆ per-row co-manager toggle
-        "emptyStateBox",       // empty-state background box
-        "emptyStateTitle",     // empty-state "no restrictions" text
-        "emptyStateDesc"       // empty-state "click to add" text
+        "ownerToggleButton"    // ★/☆ per-row co-manager toggle
     };
 
     private static final String[][] FIELD_KEYS = {
@@ -46,15 +43,11 @@ public class GuiEditorScreen extends Screen {
         {"offsetX","offsetY","scale","colorHex"},                                        // 8  columnPlayer
         {"offsetX","offsetY","scale","colorHex"},                                        // 9  columnAccess
         {"offsetX","offsetY","width","height","tooltip"},                                // 10 closeButton
-        {"offsetX","offsetY","width","height","tooltip"},                                // 11 addPlayersButton
-        {"offsetX","offsetY","width","height","tooltip"},                                // 12 scrollUpButton
-        {"offsetX","offsetY","width","height","tooltip"},                                // 13 scrollDownButton
-        {"offsetXFromRight","rowOffsetY","width","height","tooltipAllowed","tooltipBlocked"}, // 14 toggleButton
-        {"offsetX","offsetY","width","height","tooltip"},                                // 15 manageAccessButton
-        {"offsetXFromRight","rowOffsetY","width","height","tooltipAllowed","tooltipBlocked"}, // 16 ownerToggleButton
-        {"offsetX","offsetY","width","height"},                                          // 17 emptyStateBox
-        {"offsetX","offsetY","scale","colorHex"},                                        // 18 emptyStateTitle
-        {"offsetX","offsetY","scale","colorHex"},                                        // 19 emptyStateDesc
+        {"offsetX","offsetY","width","height","tooltip"},                                // 11 scrollUpButton
+        {"offsetX","offsetY","width","height","tooltip"},                                // 12 scrollDownButton
+        {"offsetXFromRight","rowOffsetY","width","height","tooltipAllowed","tooltipBlocked"}, // 13 toggleButton
+        {"offsetX","offsetY","width","height","tooltip"},                                // 14 manageAccessButton
+        {"offsetXFromRight","rowOffsetY","width","height","tooltipAllowed","tooltipBlocked"}, // 15 ownerToggleButton
     };
 
     // ─── State ────────────────────────────────────────────────────────────────
@@ -183,15 +176,11 @@ public class GuiEditorScreen extends Screen {
             case 8  -> fillText(m, cfg.columnPlayer);
             case 9  -> fillText(m, cfg.columnAccess);
             case 10 -> fillButton(m, cfg.closeButton);
-            case 11 -> fillButton(m, cfg.addPlayersButton);
-            case 12 -> fillButton(m, cfg.scrollUpButton);
-            case 13 -> fillButton(m, cfg.scrollDownButton);
-            case 14 -> fillToggle(m, cfg.toggleButton);
-            case 15 -> fillButton(m, cfg.manageAccessButton);
-            case 16 -> fillToggle(m, cfg.ownerToggleButton);
-            case 17 -> fillBoxButton(m, cfg.emptyStateBox);
-            case 18 -> fillText(m, cfg.emptyStateTitle);
-            case 19 -> fillText(m, cfg.emptyStateDesc);
+            case 11 -> fillButton(m, cfg.scrollUpButton);
+            case 12 -> fillButton(m, cfg.scrollDownButton);
+            case 13 -> fillToggle(m, cfg.toggleButton);
+            case 14 -> fillButton(m, cfg.manageAccessButton);
+            case 15 -> fillToggle(m, cfg.ownerToggleButton);
         }
         return m;
     }
@@ -218,14 +207,6 @@ public class GuiEditorScreen extends Screen {
         m.put("tooltip",  e.tooltip != null ? e.tooltip : "");
     }
 
-    /** Box entry: 4 fields only (no tooltip). */
-    private static void fillBoxButton(Map<String,String> m, GuiLayoutConfig.ButtonEntry e) {
-        m.put("offsetX", str(e.offsetX));
-        m.put("offsetY", str(e.offsetY));
-        m.put("width",   str(e.width));
-        m.put("height",  str(e.height));
-    }
-
     private static void fillToggle(Map<String,String> m, GuiLayoutConfig.ToggleButtonEntry e) {
         m.put("offsetXFromRight", str(e.offsetXFromRight));
         m.put("rowOffsetY",       str(e.rowOffsetY));
@@ -249,15 +230,11 @@ public class GuiEditorScreen extends Screen {
             case 8  -> applyText(m, cfg.columnPlayer);
             case 9  -> applyText(m, cfg.columnAccess);
             case 10 -> applyButton(m, cfg.closeButton);
-            case 11 -> applyButton(m, cfg.addPlayersButton);
-            case 12 -> applyButton(m, cfg.scrollUpButton);
-            case 13 -> applyButton(m, cfg.scrollDownButton);
-            case 14 -> applyToggle(m, cfg.toggleButton);
-            case 15 -> applyButton(m, cfg.manageAccessButton);
-            case 16 -> applyToggle(m, cfg.ownerToggleButton);
-            case 17 -> applyBoxButton(m, cfg.emptyStateBox);
-            case 18 -> applyText(m, cfg.emptyStateTitle);
-            case 19 -> applyText(m, cfg.emptyStateDesc);
+            case 11 -> applyButton(m, cfg.scrollUpButton);
+            case 12 -> applyButton(m, cfg.scrollDownButton);
+            case 13 -> applyToggle(m, cfg.toggleButton);
+            case 14 -> applyButton(m, cfg.manageAccessButton);
+            case 15 -> applyToggle(m, cfg.ownerToggleButton);
         }
     }
 
@@ -282,13 +259,6 @@ public class GuiEditorScreen extends Screen {
         e.width   = parseInt(m, "width",   e.width);
         e.height  = parseInt(m, "height",  e.height);
         e.tooltip = m.getOrDefault("tooltip", e.tooltip != null ? e.tooltip : "");
-    }
-
-    private static void applyBoxButton(Map<String,String> m, GuiLayoutConfig.ButtonEntry e) {
-        e.offsetX = parseInt(m, "offsetX", e.offsetX);
-        e.offsetY = parseInt(m, "offsetY", e.offsetY);
-        e.width   = parseInt(m, "width",   e.width);
-        e.height  = parseInt(m, "height",  e.height);
     }
 
     private static void applyToggle(Map<String,String> m, GuiLayoutConfig.ToggleButtonEntry e) {

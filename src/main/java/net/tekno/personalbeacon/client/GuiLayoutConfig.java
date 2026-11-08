@@ -120,11 +120,6 @@ public class GuiLayoutConfig {
         "Close the access-control screen"
     );
 
-    public ButtonEntry addPlayersButton = new ButtonEntry(
-        85, 110, 130, 22,
-        "Open the player list to add / manage access"
-    );
-
     public ButtonEntry scrollUpButton = new ButtonEntry(
         275, 75, 18, 18,
         "Scroll the player list up"
@@ -157,29 +152,6 @@ public class GuiLayoutConfig {
         115, 3, 16, 16,
         "Co-manager — can add/remove players. Click to remove.",
         "Make co-manager — this player can also manage the access list."
-    );
-
-    // ─── empty state (no-restrictions) box and text ───────────────────────────
-
-    /**
-     * Background box shown in the empty state (no restrictions set).
-     * Uses offsetX/Y/width/height from ButtonEntry (tooltip is unused here).
-     */
-    public ButtonEntry emptyStateBox = new ButtonEntry(
-        10, 55, 280, 48,
-        ""
-    );
-
-    /** "✔ No restrictions" text inside the empty state box (centred). */
-    public TextEntry emptyStateTitle = new TextEntry(
-        150, 64, 1.0f, "1A8A40",
-        "Empty-state 'No restrictions' text (centred at offsetX)."
-    );
-
-    /** "Click to add players" text below the title in the empty state box (centred). */
-    public TextEntry emptyStateDesc = new TextEntry(
-        150, 78, 1.0f, "3D3D3D",
-        "Empty-state 'Click to add' description text (centred at offsetX)."
     );
 
     /**

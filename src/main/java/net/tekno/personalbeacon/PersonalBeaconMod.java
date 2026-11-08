@@ -33,7 +33,9 @@ public class PersonalBeaconMod implements ModInitializer {
             }
         });
 
-        // Send sync packet when player right-clicks beacon
+        // Singleplayer: auto-add the player when they right-click an unrestricted beacon.
+        // No sync is sent here — the client only accepts sync data while BeaconAccessScreen
+        // is open, and that screen requests its own sync (C2S_REQUEST_SYNC).
         UseBlockCallback.EVENT.register((player, world, hand, hitResult) -> {
             if (world.isClient()) return ActionResult.PASS;
             BlockPos pos = hitResult.getBlockPos();
@@ -51,7 +53,6 @@ public class PersonalBeaconMod implements ModInitializer {
                                     serverPlayer.getName().getString(), pos);
                             }
                         }
-                        ModNetworking.sendSyncPacket(serverPlayer, pos);
                     });
                 }
             }
