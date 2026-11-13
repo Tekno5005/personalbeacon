@@ -3,14 +3,10 @@ package net.tekno.personalbeacon;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
-import net.fabricmc.fabric.api.client.command.v2.ClientCommandManager;
-import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.minecraft.network.PacketByteBuf;
-import net.minecraft.text.Text;
 import net.minecraft.util.math.BlockPos;
 import net.tekno.personalbeacon.client.BeaconAccessScreen;
-import net.tekno.personalbeacon.client.GuiEditorScreen;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -24,27 +20,7 @@ public class PersonalBeaconClient implements ClientModInitializer {
     @Override
     public void onInitializeClient() {
         registerClientPackets();
-        registerClientCommands();
         PersonalBeaconMod.LOGGER.info("Personal Beacon client initialized.");
-    }
-
-    private static void registerClientCommands() {
-        ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) ->
-            dispatcher.register(
-                ClientCommandManager.literal("personalbeaconop")
-                    .then(ClientCommandManager.literal("edit")
-                        .executes(ctx -> {
-                            GuiEditorScreen.editorUnlocked = !GuiEditorScreen.editorUnlocked;
-                            ctx.getSource().sendFeedback(
-                                Text.literal(GuiEditorScreen.editorUnlocked
-                                    ? "§a[PersonalBeacon] §fGUI Editor enabled — open a beacon to see the §e⚙§f button."
-                                    : "§c[PersonalBeacon] §fGUI Editor disabled.")
-                            );
-                            return 1;
-                        })
-                    )
-            )
-        );
     }
 
     private static void registerClientPackets() {
