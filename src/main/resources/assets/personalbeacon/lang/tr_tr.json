@@ -23,7 +23,6 @@
   "personalbeacon.screen.unrestricted_desc": "Tüm oyuncular bu beacon'ın efektlerini alıyor.",
   "personalbeacon.screen.open_to_all": "Herkese Aç",
   "personalbeacon.screen.restrict_access": "Erişimi Kısıtla",
-  "personalbeacon.feedback.unrestricted": "✔ Beacon tüm oyunculara açıldı",
   "personalbeacon.screen.pill_restricted": "%s İZİNLİ",
   "personalbeacon.screen.pill_open": "HERKESE AÇIK",
   "personalbeacon.screen.pill_singleplayer": "TEK OYUNCULU",
@@ -43,5 +42,7 @@
   "personalbeacon.screen.tip.co_manager": "Yardımcı yönetici — kaldırmak için tıkla",
   "personalbeacon.screen.tip.make_co_manager": "Yardımcı yönetici yap",
   "personalbeacon.screen.confirm_open": "Emin misin?",
-  "personalbeacon.screen.no_results": "Bu isimde oyuncu yok"
+  "personalbeacon.screen.no_results": "Bu isimde oyuncu yok",
+  "personalbeacon.feedback.restricted": "✔ Beacon kısıtlandı",
+  "personalbeacon.screen.tip.restrict": "Sadece sen ve açtığın oyuncular efekt alır"
 }

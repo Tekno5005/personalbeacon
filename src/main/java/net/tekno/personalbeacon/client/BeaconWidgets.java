@@ -79,7 +79,13 @@ final class BeaconWidgets {
             if (active && (isHovered() || isFocused())) ctx.drawBorder(x, y, width, height, WHITE);
             TextRenderer tr = MinecraftClient.getInstance().textRenderer;
             ctx.drawCenteredTextWithShadow(tr, getMessage(), x + width / 2, y + (height - 7) / 2,
-                active ? textColor : 0xFFA0A0A0);
+                active ? textColor : dim(textColor));
+        }
+
+        /** Inactive buttons keep their own color at 5/8 brightness (white becomes the usual light gray). */
+        private static int dim(int argb) {
+            int r = (argb >> 16 & 0xFF) * 5 / 8, g = (argb >> 8 & 0xFF) * 5 / 8, b = (argb & 0xFF) * 5 / 8;
+            return 0xFF000000 | r << 16 | g << 8 | b;
         }
     }
 

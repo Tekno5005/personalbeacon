@@ -36,9 +36,11 @@ class BeaconAccessDataTest {
         UUID owner = UUID.randomUUID();
         UUID friend = UUID.randomUUID();
 
-        data.setOwner(pos, owner);
+        // Restriction created before the beacon had an owner: the owner is not on the list
         data.addPlayer(pos, friend, "Friend");
+        data.setOwner(pos, owner);
 
+        assertFalse(data.getAllowedPlayers(pos).contains(owner));
         assertTrue(data.isAllowed(pos, owner));
         assertTrue(data.isAllowed(pos, friend));
         assertFalse(data.isAllowed(pos, UUID.randomUUID()));
@@ -67,6 +69,41 @@ class BeaconAccessDataTest {
 
         assertFalse(data.isRestricted(pos));
         assertTrue(data.isAllowed(pos, UUID.randomUUID()));
+    }
+
+    // -------------------------------------------------------
+    // An owned beacon stays restricted until it is opened explicitly
+    // -------------------------------------------------------
+
+    @Test
+    void removePlayer_lastOtherPlayer_ownedBeaconStaysRestrictedToOwners() {
+        BeaconAccessData data = new BeaconAccessData();
+        BlockPos pos = new BlockPos(0, 64, 0);
+        UUID owner = UUID.randomUUID();
+        UUID friend = UUID.randomUUID();
+
+        data.setOwner(pos, owner);
+        data.addPlayer(pos, friend, "Friend");
+        data.removePlayer(pos, friend);
+
+        assertTrue(data.isRestricted(pos));
+        assertTrue(data.isAllowed(pos, owner));
+        assertFalse(data.isAllowed(pos, UUID.randomUUID()));
+    }
+
+    @Test
+    void unrestrictBeacon_ownedBeacon_opensToEveryone() {
+        BeaconAccessData data = new BeaconAccessData();
+        BlockPos pos = new BlockPos(0, 64, 0);
+        UUID owner = UUID.randomUUID();
+
+        data.setOwner(pos, owner);
+        data.addPlayer(pos, UUID.randomUUID(), "Friend");
+        data.unrestrictBeacon(pos);
+
+        assertFalse(data.isRestricted(pos));
+        assertTrue(data.isAllowed(pos, UUID.randomUUID()));
+        assertEquals(owner, data.getPrimaryOwner(pos));
     }
 
     // -------------------------------------------------------

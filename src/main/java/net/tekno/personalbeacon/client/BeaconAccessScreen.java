@@ -67,8 +67,14 @@ public class BeaconAccessScreen extends Screen {
     private Map<UUID, String> allowedPlayers = new LinkedHashMap<>();
     private final Map<UUID, PlayerListEntry> online = new HashMap<>();
     private final Set<UUID> pendingOwnerChanges = new HashSet<>();
-    private boolean showingRestrictedView = false;
     private long confirmOpenUntil = 0;
+
+    /** Last feedback line, shown under the list: the action bar is hidden behind the panel. */
+    private Text toast = Text.empty();
+    private long toastUntil = 0;
+
+    /** Everyone listed since the screen opened: a player who is turned off stays listed and can be turned on again. */
+    private final Map<UUID, String> listed = new HashMap<>();
 
     /** Order of the last sort. Toggling access never re-sorts, so rows stay where they are. */
     private final List<UUID> order = new ArrayList<>();
@@ -105,8 +111,13 @@ public class BeaconAccessScreen extends Screen {
     private View view() {
         if (isSingleplayer()) return View.SINGLEPLAYER;
         if (beaconPos == null) return View.LOADING;
-        if (!showingRestrictedView && allowedPlayers.isEmpty()) return View.UNRESTRICTED;
-        return View.LIST;
+        // The server opens a beacon to everyone when its list is empty
+        return allowedPlayers.isEmpty() ? View.UNRESTRICTED : View.LIST;
+    }
+
+    private void toast(Text message) {
+        toast = message;
+        toastUntil = Util.getMeasuringTimeMs() + 3000;
     }
 
     private int listTop() { return py + (isSelfOwner() ? 66 : 82); }
@@ -120,9 +131,11 @@ public class BeaconAccessScreen extends Screen {
             new Row(uuid, name, online.containsKey(uuid), true, false, false)));
         online.forEach((uuid, entry) -> all.putIfAbsent(uuid,
             new Row(uuid, entry.getProfile().getName(), true, false, false, false)));
+        listed.forEach((uuid, name) -> all.putIfAbsent(uuid,
+            new Row(uuid, name, false, false, false, false)));
+        all.values().forEach(r -> listed.put(r.uuid(), r.name()));
 
         if (resort) order.clear();
-        order.removeIf(uuid -> !all.containsKey(uuid));
         all.values().stream()
             .filter(r -> !order.contains(r.uuid()))
             .sorted(comparator(sortMode))
@@ -140,7 +153,7 @@ public class BeaconAccessScreen extends Screen {
         Comparator<Row> byName = Comparator.comparing(Row::name, String.CASE_INSENSITIVE_ORDER);
         return switch (mode) {
             case NAME -> byName;
-            case ACCESS -> Comparator.comparing((Row r) -> !(r.owner() || r.allowed())).thenComparing(byName);
+            case ACCESS -> Comparator.comparingInt((Row r) -> r.owner() ? 0 : r.allowed() ? 1 : 2).thenComparing(byName);
             case ONLINE -> Comparator.comparing((Row r) -> !r.online()).thenComparing(byName);
         };
     }
@@ -160,15 +173,17 @@ public class BeaconAccessScreen extends Screen {
         }
         rebuildRows(order.isEmpty());
 
-        this.addDrawableChild(ButtonWidget.builder(Text.translatable("personalbeacon.screen.close"), b -> close())
-            .dimensions(px + W - PAD - 90, py + 210, 90, 20).build());
+        this.addDrawableChild(new FlatButton(px + W - PAD - 90, py + 210, 90, 20,
+            Text.translatable("personalbeacon.screen.close"), FlatButton.Style.GRAY, WHITE, b -> close()));
 
         View v = view();
         if (v == View.UNRESTRICTED) {
             ButtonWidget restrict = new FlatButton(px + W / 2 - 60, py + 172, 120, 20,
                 Text.translatable("personalbeacon.screen.restrict_access"), FlatButton.Style.TEAL, WHITE,
-                b -> { showingRestrictedView = true; rebuildRows(true); clearAndInit(); });
+                b -> sendRestrict());
             restrict.active = isSelfOwner();
+            restrict.setTooltip(Tooltip.of(Text.translatable(restrict.active
+                ? "personalbeacon.screen.tip.restrict" : "personalbeacon.feedback.no_permission")));
             this.addDrawableChild(restrict);
         } else if (v == View.LIST) {
             initListWidgets();
@@ -295,22 +310,40 @@ public class BeaconAccessScreen extends Screen {
     // Network
     // -------------------------------------------------------
 
-    private void sendToggle(UUID uuid, String name, boolean add) {
+    private void sendAccess(UUID uuid, boolean add) {
         PacketByteBuf buf = PacketByteBufs.create();
         buf.writeBlockPos(beaconPos);
         buf.writeUuid(uuid);
         buf.writeBoolean(add);
         ClientPlayNetworking.send(ModNetworking.C2S_UPDATE_ACCESS, buf);
+    }
+
+    /**
+     * Restricts the beacon by listing yourself. The server makes you the owner of an unowned
+     * beacon and lists its primary owner, so only the owners receive effects from then on.
+     */
+    private void sendRestrict() {
+        UUID self = this.client.player.getUuid();
+        sendAccess(self, true);
+        allowedPlayers.put(self, this.client.player.getGameProfile().getName());
+        toast(Text.translatable("personalbeacon.feedback.restricted"));
+        rebuildRows(true);
+        clearAndInit();
+    }
+
+    private void sendToggle(UUID uuid, String name, boolean add) {
+        sendAccess(uuid, add);
 
         if (add) allowedPlayers.put(uuid, name);
         else allowedPlayers.remove(uuid);
 
-        this.client.player.sendMessage(add
+        toast(add
             ? Text.translatable("personalbeacon.feedback.added", name)
-            : Text.translatable("personalbeacon.feedback.removed", name), true);
+            : Text.translatable("personalbeacon.feedback.removed", name));
 
+        // Shown right away; the server's sync that follows is the truth
         rebuildRows(false);
-        refreshRowWidgets();
+        clearAndInit();
     }
 
     private void sendOwnerToggle(UUID uuid, boolean add) {
@@ -326,15 +359,12 @@ public class BeaconAccessScreen extends Screen {
 
     /** Remove all restrictions and return to the open-to-everyone state. */
     private void sendUnrestrict() {
-        showingRestrictedView = false;
+        PacketByteBuf buf = PacketByteBufs.create();
+        buf.writeBlockPos(beaconPos);
+        ClientPlayNetworking.send(ModNetworking.C2S_UNRESTRICT, buf);
+
         confirmOpenUntil = 0;
-        if (!allowedPlayers.isEmpty()) {
-            PacketByteBuf buf = PacketByteBufs.create();
-            buf.writeBlockPos(beaconPos);
-            ClientPlayNetworking.send(ModNetworking.C2S_UNRESTRICT, buf);
-            allowedPlayers.clear();
-            this.client.player.sendMessage(Text.translatable("personalbeacon.feedback.unrestricted"), true);
-        }
+        allowedPlayers.clear();
         rebuildRows(true);
         clearAndInit();
     }
@@ -352,17 +382,15 @@ public class BeaconAccessScreen extends Screen {
             boolean isNowOwner = owners.containsKey(pending);
             String playerName = owners.getOrDefault(pending, ownerNames.getOrDefault(pending, "?"));
             if (!wasOwner && isNowOwner) {
-                this.client.player.sendMessage(Text.translatable("personalbeacon.feedback.owner_added", playerName), true);
+                toast(Text.translatable("personalbeacon.feedback.owner_added", playerName));
             } else if (wasOwner && !isNowOwner) {
-                this.client.player.sendMessage(Text.translatable("personalbeacon.feedback.owner_removed", playerName), true);
+                toast(Text.translatable("personalbeacon.feedback.owner_removed", playerName));
             }
         }
         pendingOwnerChanges.clear();
 
         this.ownerNames = new HashMap<>(owners);
         this.allowedPlayers = new LinkedHashMap<>(allowed);
-        // Server confirmed the beacon is unrestricted — leave the restrict view
-        if (allowed.isEmpty()) showingRestrictedView = false;
 
         rebuildRows(firstData);
         clearAndInit();
@@ -441,7 +469,7 @@ public class BeaconAccessScreen extends Screen {
     /** Big icon, a title and a wrapped description, centered. */
     private void drawCentered(DrawContext ctx, int y, Text title, Text desc) {
         ctx.drawTexture(ICON, px + (W - ICON_PX) / 2, y, 0, 0, ICON_PX, ICON_PX, ICON_PX, ICON_PX);
-        ctx.drawCenteredTextWithShadow(textRenderer, title, px + W / 2, y + 50, WHITE);
+        ctx.drawText(textRenderer, title, px + (W - textRenderer.getWidth(title)) / 2, y + 50, TEXT_DARK, false);
         int ly = y + 64;
         for (OrderedText line : textRenderer.wrapLines(desc, W - 40)) {
             ctx.drawText(textRenderer, line, px + (W - textRenderer.getWidth(line)) / 2, ly, TEXT_DIM, false);
@@ -513,8 +541,9 @@ public class BeaconAccessScreen extends Screen {
             ctx.fill(trackX, thumbY, trackX + SCROLLBAR_W, thumbY + thumbH, 0xFF8B8B8B);
         }
 
-        ctx.drawText(textRenderer, Text.translatable("personalbeacon.screen.desc"),
-            px + PAD, top + n * ROW_H + 6, TEXT_DIM, false);
+        boolean showToast = Util.getMeasuringTimeMs() < toastUntil;
+        ctx.drawText(textRenderer, showToast ? toast : Text.translatable("personalbeacon.screen.desc"),
+            px + PAD, top + n * ROW_H + 6, showToast ? TEXT_DARK : TEXT_DIM, false);
     }
 
     /** Placeholder rows while the server's data is on its way; no actions are possible yet. */

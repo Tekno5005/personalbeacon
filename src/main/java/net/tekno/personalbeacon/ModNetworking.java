@@ -62,17 +62,17 @@ public class ModNetworking {
                         return;
                     }
                     // The player who restricts an unowned beacon becomes its primary owner
-                    boolean claimed = !manager.hasOwner(beaconPos);
-                    if (claimed) {
+                    if (!manager.hasOwner(beaconPos)) {
                         manager.setOwner(beaconPos, player.getUuid());
                         PersonalBeaconMod.LOGGER.info("{} is now owner of beacon at {}",
                             player.getName().getString(), beaconPos);
                     }
                     manager.addPlayer(beaconPos, targetUUID, targetName);
-                    if (claimed) sendSyncPacket(player, beaconPos); // client learns it is now the owner
                 } else {
                     manager.removePlayer(beaconPos, targetUUID);
                 }
+                // The server's list is the truth (new owner, owner listed by a new restriction, ...)
+                sendSyncPacket(player, beaconPos);
 
                 PersonalBeaconMod.LOGGER.info("Player {} {} {} ({}) for beacon at {}",
                     player.getName().getString(), add ? "added" : "removed",

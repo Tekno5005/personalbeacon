@@ -30,8 +30,20 @@ public class BeaconAccessData {
     // -------------------------------------------------------
 
     public void addPlayer(BlockPos pos, UUID uuid, String playerName) {
-        allowedPlayers.computeIfAbsent(pos, k -> new HashSet<>()).add(uuid);
+        allowedPlayers.computeIfAbsent(pos, this::newRestriction).add(uuid);
         playerNames.put(uuid, playerName); // cache name for offline display
+    }
+
+    /**
+     * A new restriction lists the beacon's primary owner. Owner rows can't be toggled in the GUI,
+     * so the list never becomes empty there: removing every other player leaves the beacon
+     * restricted to its owners instead of silently reopening it to everyone.
+     */
+    private Set<UUID> newRestriction(BlockPos pos) {
+        Set<UUID> set = new HashSet<>();
+        UUID primary = primaryOwners.get(pos);
+        if (primary != null) set.add(primary);
+        return set;
     }
 
     public void removePlayer(BlockPos pos, UUID uuid) {

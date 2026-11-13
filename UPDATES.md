@@ -15,11 +15,20 @@ Format follows [Semantic Versioning](https://semver.org/).
   - a padlock switch per player (ON / OFF / OWNER) and a ★ co-manager button
   - player search
   - mouse-wheel scrolling with a scrollbar
-- **Sorting** by name, access or online status, remembered while the game runs. Rows keep their place when you toggle a player; the order is only applied when you pick a sort.
+- **Sorting** by name, access (owners, then allowed players, then the rest) or online status, remembered while the game runs. Rows keep their place when you toggle a player; the order is only applied when you pick a sort.
+- **Players you turn off stay listed** while the screen is open, offline players too, so a wrong click can be undone.
+- **Feedback line under the list** ("✔ Alex added …"). The action bar these messages used before is hidden behind the panel.
 - **Separate screens** for loading, open-to-all, view-only and singleplayer:
   - Loading: no actions until the server's data arrives.
   - View only: dimmed list with inactive controls and a banner.
 - **"Open to All" asks for confirmation** (second click within 3 seconds).
+
+### Changed
+- **"Restrict Access" restricts the beacon at once.** It used to only show the list, and the beacon stayed open until the first player was added. Now the click lists you, makes you the owner of a beacon that has none, and only owners receive effects until you turn other players on. This also makes an owners-only beacon possible.
+- **The server sends its list after every change**, so the screen always shows the server's state.
+
+### Fixed
+- **Beacon silently reopened to everyone** — since v2.0.0 the player who restricts a beacon becomes its owner without being put on the list. Removing the last listed player emptied the list, and an empty list means "open to everyone". A new restriction now lists the beacon's primary owner. Owner rows can't be toggled, so the list can't become empty in the GUI, and the beacon reopens only through "Open to All".
 
 ### Removed
 - **GUI layout editor**, the `/personalbeaconop edit` command and `config/personalbeacon_gui_layout.json`.

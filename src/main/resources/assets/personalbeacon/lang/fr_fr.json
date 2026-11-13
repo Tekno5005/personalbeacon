@@ -23,7 +23,6 @@
   "personalbeacon.screen.unrestricted_desc": "Tous les joueurs recoivent les effets de ce beacon.",
   "personalbeacon.screen.open_to_all": "Ouvrir a tous",
   "personalbeacon.screen.restrict_access": "Restreindre l'acces",
-  "personalbeacon.feedback.unrestricted": "✔ Beacon ouvert a tous les joueurs",
   "personalbeacon.screen.pill_restricted": "%s AUTORISÉS",
   "personalbeacon.screen.pill_open": "OUVERT À TOUS",
   "personalbeacon.screen.pill_singleplayer": "SOLO",
@@ -43,5 +42,7 @@
   "personalbeacon.screen.tip.co_manager": "Co-gestionnaire — cliquer pour retirer",
   "personalbeacon.screen.tip.make_co_manager": "Nommer co-gestionnaire",
   "personalbeacon.screen.confirm_open": "Confirmer ?",
-  "personalbeacon.screen.no_results": "Aucun joueur trouvé"
+  "personalbeacon.screen.no_results": "Aucun joueur trouvé",
+  "personalbeacon.feedback.restricted": "✔ Beacon restreint",
+  "personalbeacon.screen.tip.restrict": "Seuls vous et les joueurs activés recevront les effets"
 }
