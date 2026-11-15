@@ -5,7 +5,7 @@ Format follows [Semantic Versioning](https://semver.org/).
 
 -----
 
-## Unreleased
+## v2.1.0 — 2026-11-15
 
 ### Added
 - **Redesigned access screen.** It is drawn in code on top of the 1:1 panel texture, so it stays crisp at every GUI scale. It has:
