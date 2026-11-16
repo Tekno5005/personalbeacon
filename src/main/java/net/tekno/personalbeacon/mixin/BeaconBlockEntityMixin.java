@@ -33,11 +33,11 @@ public class BeaconBlockEntityMixin {
             BlockPos pos) {
 
         BeaconAccessManager manager = BeaconAccessManager.get(world.getServer());
-        if (!manager.isRestricted(pos)) return players;
+        if (!manager.isRestricted(world, pos)) return players;
 
         List<PlayerEntity> allowed = new ArrayList<>(players.size());
         for (PlayerEntity player : players) {
-            if (manager.isAllowed(pos, player.getUuid())) allowed.add(player);
+            if (manager.isAllowed(world, pos, player.getUuid())) allowed.add(player);
         }
         return allowed;
     }

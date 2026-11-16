@@ -28,9 +28,9 @@ public abstract class BeaconScreenMixin extends HandledScreen<BeaconScreenHandle
     @Inject(method = "init", at = @At("TAIL"))
     private void addAccessButton(CallbackInfo ci) {
         BeaconScreen self = (BeaconScreen)(Object) this;
-        // Manage Access button at the top-left of the vanilla beacon panel (11x11, see issue #4)
+        // Manage Access button at the top-left of the vanilla beacon panel, left of the "Primary Power" label
         this.addDrawableChild(new TextureButtonWidget(
-            this.x + 12, this.y + 10, 11, 11,
+            this.x + 12, this.y + 10,
             Text.translatable("personalbeacon.screen.manage_access"),
             btn -> {
                 // Server resolves the beacon pos from our open beacon screen and

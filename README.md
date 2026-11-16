@@ -7,10 +7,13 @@
   * **Granular Access Control:** Restrict Beacon effects to specific players via an integrated list.
   * **Integrated GUI:** Manage player access directly through a custom button injected into the vanilla Beacon interface.
   * **Access Screen:** Player heads with online/offline status, a padlock switch per player (ON / OFF / OWNER), search, and sorting by name, access or online status. Toggling a player never moves their row.
-  * **Custom Textures:** The panel background (`custom_beacon_gui`, 300×240), the beacon icon (`beacon_icon`, 43×43) and the Manage Access button (`button.png`) are PNG textures that resource packs can replace. They are drawn 1:1, so replacements should keep these sizes.
+  * **Custom Textures:** The panel background (`custom_beacon_gui`, 300×240), the beacon icon (`beacon_icon`, 43×43) and the Manage Access button (`button.png` and `button_selected.png`, 11×11) are PNG textures that resource packs can replace. They are drawn 1:1, so replacements should keep these sizes.
   * **Multi-Language Support:** Fully translated into English, Turkish, French, and Spanish.
   * **Smart Fallback:** If no restrictions are configured for a given Beacon, it defaults to vanilla behavior (all players within range receive effects).
   * **Automatic State Cleanup:** When a Beacon is removed from the world (broken, blown up, or replaced by commands), its access data is automatically purged. Unloading a chunk keeps the data.
+  * **Per-Dimension Data:** Beacons at the same coordinates in the Overworld, the Nether and the End have separate access lists.
+  * **Your Beacons:** `/personalbeacon mine` lists the beacons you own or co-manage, for every player.
+  * **Mod Menu Settings:** With [Mod Menu](https://modrinth.com/mod/modmenu) installed, the settings can be changed in-game (optional).
   * **Distance Validation:** Configurable interaction range (`maxManageDistance`) prevents exploitation and remote management on multiplayer servers.
 
 -----
@@ -22,12 +25,12 @@
 | **Minecraft Version** | 1.20.1 |
 | **Mod Loader** | Fabric |
 | **Java Version** | 17 (Runtime) / 21 (Development) |
-| **Dependencies** | Fabric API |
+| **Dependencies** | Fabric API (required), Mod Menu (optional) |
 | **Configuration** | `config/personalbeacon.json` |
 
 ### Architecture Overview
 
-The mod utilizes `PersistentState` for server-side data persistence (`Map<BlockPos, Set<UUID>>`) and a custom packet system (`ModNetworking`) for client-server synchronization.
+The mod utilizes `PersistentState` for server-side data persistence (`Map<BeaconPos, Set<UUID>>`, where `BeaconPos` is the dimension plus the block position) and a custom packet system (`ModNetworking`) for client-server synchronization.
 
   * **Mixins:** Extends vanilla behavior by filtering the player list in `BeaconBlockEntity.applyPlayerEffects` (MixinExtras `@ModifyExpressionValue`, chains with other mods) and injecting into `BeaconScreen`. The beacon position is resolved server-side from the player's open `BeaconScreenHandler`.
   * **Networking:** Implements channels (`C2S_UPDATE_ACCESS`, `S2C_SYNC_ACCESS`, `C2S_REQUEST_SYNC`, `S2C_TEST_MODE`) for real-time state synchronization and GUI updates.
@@ -49,7 +52,7 @@ All user-facing strings use `Text.translatable()`. To add a new language, create
 
 ## Configuration
 
-The mod behavior can be modified via `config/personalbeacon.json`:
+The mod behavior can be modified via `config/personalbeacon.json`, or in-game from Mod Menu (Mods → Personal Beacon → settings button). The in-game screen edits this game's file, so it applies to the worlds you host (singleplayer, LAN). A dedicated server reads its own file.
 
   * `maxManageDistance`: Maximum block distance allowed for a player to modify a Beacon's access list on a dedicated server (Default: 8.0, 0 = no limit). Singleplayer/LAN worlds skip this check.
   * `allowNonOpManagement`: When `true` (default), non-operator players can manage beacons — only the owners once a beacon has an owner. When `false`, only operators can manage beacons.
@@ -58,7 +61,14 @@ The mod behavior can be modified via `config/personalbeacon.json`:
 
 ## Commands
 
+### Player Commands
+
+  * `/personalbeacon mine` - Lists the beacons you own or co-manage: coordinates (click to copy), dimension, access and your role.
+
 ### Server Commands (OP Level 2)
+
+Coordinates are in the dimension the command runs in (use `/execute in <dimension> run ...` for another one).
+
 
   * `/personalbeacon help` - Displays the command help menu.
   * `/personalbeacon debug` - Lists all restricted beacons with owners and players.
@@ -73,8 +83,7 @@ The mod behavior can be modified via `config/personalbeacon.json`:
 ## Known Issues & Technical Constraints
 
   * **State Volatility:** The `/personalbeacon test` mode toggle is volatile. It defaults to `false` upon server restart.
-  * **Dimensions share coordinates:** Access data is keyed by position only, so beacons at the same coordinates in different dimensions share one access list ([#3](https://github.com/Tekno5005/personalbeacon/issues/3)).
-  * **Manage Access button icon:** The 20×20 button texture is drawn at 11×11 and looks distorted ([#4](https://github.com/Tekno5005/personalbeacon/issues/4)).
+  * **Data saved before v2.2.0** has no dimension. Each such beacon moves to the dimension of the first beacon at its position that is used (its effects tick, its screen opens, it is broken or named in a command). Until then, `/personalbeacon mine` shows it as "unknown dimension".
 
 -----
 

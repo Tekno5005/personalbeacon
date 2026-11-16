@@ -44,5 +44,22 @@
   "personalbeacon.screen.confirm_open": "Are you sure?",
   "personalbeacon.screen.no_results": "No players found",
   "personalbeacon.feedback.restricted": "✔ Beacon restricted",
-  "personalbeacon.screen.tip.restrict": "Only you and the players you turn on will receive effects"
+  "personalbeacon.screen.tip.restrict": "Only you and the players you turn on will receive effects",
+  "personalbeacon.command.mine.none": "You don't own any beacons.",
+  "personalbeacon.command.mine.header": "Your beacons (%s):",
+  "personalbeacon.command.mine.owner": "owner",
+  "personalbeacon.command.mine.co_manager": "co-manager",
+  "personalbeacon.command.mine.open": "open to all",
+  "personalbeacon.command.mine.restricted": "%s allowed",
+  "personalbeacon.dimension.overworld": "Overworld",
+  "personalbeacon.dimension.the_nether": "Nether",
+  "personalbeacon.dimension.the_end": "End",
+  "personalbeacon.dimension.unknown": "unknown dimension",
+  "personalbeacon.config.title": "Personal Beacon Settings",
+  "personalbeacon.config.note": "Used by worlds you host. A server uses its own config file.",
+  "personalbeacon.config.allow_non_op": "Non-op players can manage beacons",
+  "personalbeacon.config.allow_non_op.tip": "On: the first player to restrict a beacon owns it, and only its owners can manage it. Off: only ops can manage beacons. Ops always can.",
+  "personalbeacon.config.max_distance": "Max manage distance: %s",
+  "personalbeacon.config.max_distance.tip": "How far a player may be from the beacon to change its access. Only checked on dedicated servers.",
+  "personalbeacon.config.blocks": "%s blocks"
 }

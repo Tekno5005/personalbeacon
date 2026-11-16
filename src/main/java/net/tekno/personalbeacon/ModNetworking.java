@@ -13,6 +13,10 @@ import net.tekno.personalbeacon.mixin.BeaconScreenHandlerAccessor;
 import java.util.Set;
 import java.util.UUID;
 
+/**
+ * Packets carry only the beacon's BlockPos. Its dimension is the player's world:
+ * a beacon screen closes when its player changes dimension.
+ */
 public class ModNetworking {
 
     public static final Identifier C2S_UPDATE_ACCESS  = new Identifier("personalbeacon", "update_access");
@@ -62,14 +66,14 @@ public class ModNetworking {
                         return;
                     }
                     // The player who restricts an unowned beacon becomes its primary owner
-                    if (!manager.hasOwner(beaconPos)) {
-                        manager.setOwner(beaconPos, player.getUuid());
+                    if (!manager.hasOwner(player.getWorld(), beaconPos)) {
+                        manager.setOwner(player.getWorld(), beaconPos, player.getUuid());
                         PersonalBeaconMod.LOGGER.info("{} is now owner of beacon at {}",
                             player.getName().getString(), beaconPos);
                     }
-                    manager.addPlayer(beaconPos, targetUUID, targetName);
+                    manager.addPlayer(player.getWorld(), beaconPos, targetUUID, targetName);
                 } else {
-                    manager.removePlayer(beaconPos, targetUUID);
+                    manager.removePlayer(player.getWorld(), beaconPos, targetUUID);
                 }
                 // The server's list is the truth (new owner, owner listed by a new restriction, ...)
                 sendSyncPacket(player, beaconPos);
@@ -121,7 +125,7 @@ public class ModNetworking {
                 }
 
                 if (add) {
-                    boolean ok = manager.addOwner(beaconPos, targetUUID);
+                    boolean ok = manager.addOwner(player.getWorld(), beaconPos, targetUUID);
                     if (!ok) {
                         PersonalBeaconMod.LOGGER.warn(
                             "Cannot add owner {} to beacon at {} — no primary owner set yet", targetUUID, beaconPos);
@@ -130,7 +134,7 @@ public class ModNetworking {
                     PersonalBeaconMod.LOGGER.info("Player {} added {} as co-owner of beacon at {}",
                         player.getName().getString(), targetUUID, beaconPos);
                 } else {
-                    boolean ok = manager.removeOwner(beaconPos, targetUUID);
+                    boolean ok = manager.removeOwner(player.getWorld(), beaconPos, targetUUID);
                     if (!ok) {
                         PersonalBeaconMod.LOGGER.warn(
                             "Cannot remove primary owner {} from beacon at {}", targetUUID, beaconPos);
@@ -166,7 +170,7 @@ public class ModNetworking {
                     return;
                 }
 
-                manager.unrestrictBeacon(beaconPos);
+                manager.unrestrictBeacon(player.getWorld(), beaconPos);
                 PersonalBeaconMod.LOGGER.info("Player {} opened beacon at {} to all players",
                     player.getName().getString(), beaconPos);
                 sendSyncPacket(player, beaconPos);
@@ -191,9 +195,9 @@ public class ModNetworking {
     public static void sendSyncPacket(ServerPlayerEntity player, BlockPos beaconPos) {
         BeaconAccessManager manager = BeaconAccessManager.get(player.getServer());
 
-        Set<UUID> allowed = manager.getAllowedPlayers(beaconPos);
-        UUID primaryOwner = manager.getPrimaryOwner(beaconPos);
-        Set<UUID> owners  = manager.getOwners(beaconPos);
+        Set<UUID> allowed = manager.getAllowedPlayers(player.getWorld(), beaconPos);
+        UUID primaryOwner = manager.getPrimaryOwner(player.getWorld(), beaconPos);
+        Set<UUID> owners  = manager.getOwners(player.getWorld(), beaconPos);
 
         PacketByteBuf buf = PacketByteBufs.create();
         buf.writeBlockPos(beaconPos);
@@ -238,7 +242,7 @@ public class ModNetworking {
     private static boolean canManage(BeaconAccessManager manager, ServerPlayerEntity player, BlockPos beaconPos) {
         if (player.hasPermissionLevel(2)) return true;
         if (!PersonalBeaconConfig.get().allowNonOpManagement) return false;
-        return !manager.hasOwner(beaconPos) || manager.isOwner(beaconPos, player.getUuid());
+        return !manager.hasOwner(player.getWorld(), beaconPos) || manager.isOwner(player.getWorld(), beaconPos, player.getUuid());
     }
 
     private static boolean isPlayerNearBeacon(ServerPlayerEntity player, BlockPos beaconPos) {

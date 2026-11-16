@@ -6,9 +6,11 @@ import net.minecraft.server.world.ServerWorld;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.PersistentState;
 import net.minecraft.world.PersistentStateManager;
+import net.minecraft.world.World;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
@@ -44,44 +46,54 @@ public class BeaconAccessManager extends PersistentState {
         );
     }
 
+    /**
+     * The key of the beacon at {@code pos} in {@code world}. Hands it the entry saved there
+     * before v2.2.0 (without a dimension), if there is one: see {@link BeaconAccessData#claimLegacy}.
+     */
+    private BeaconPos at(World world, BlockPos pos) {
+        BeaconPos key = BeaconPos.of(world, pos);
+        if (data.claimLegacy(key)) markDirty();
+        return key;
+    }
+
     // -------------------------------------------------------
     // Allowed players
     // -------------------------------------------------------
 
     /** Add a player to a beacon's allowed list. Ownership is set separately via {@link #setOwner}. */
-    public void addPlayer(BlockPos pos, UUID playerUUID, String playerName) {
-        data.addPlayer(pos, playerUUID, playerName);
+    public void addPlayer(World world, BlockPos pos, UUID playerUUID, String playerName) {
+        data.addPlayer(at(world, pos), playerUUID, playerName);
         LOGGER.debug("Added {} ({}) to beacon at {}", playerName, playerUUID, pos);
         markDirty();
     }
 
-    public void removePlayer(BlockPos pos, UUID playerUUID) {
-        data.removePlayer(pos, playerUUID);
+    public void removePlayer(World world, BlockPos pos, UUID playerUUID) {
+        data.removePlayer(at(world, pos), playerUUID);
         LOGGER.debug("Removed {} from beacon at {}", playerUUID, pos);
         markDirty();
     }
 
-    public boolean isAllowed(BlockPos pos, UUID playerUUID) {
-        return data.isAllowed(pos, playerUUID);
+    public boolean isAllowed(World world, BlockPos pos, UUID playerUUID) {
+        return data.isAllowed(at(world, pos), playerUUID);
     }
 
-    public boolean isRestricted(BlockPos pos) {
-        return data.isRestricted(pos);
+    public boolean isRestricted(World world, BlockPos pos) {
+        return data.isRestricted(at(world, pos));
     }
 
-    public Set<UUID> getAllowedPlayers(BlockPos pos) {
-        return data.getAllowedPlayers(pos);
+    public Set<UUID> getAllowedPlayers(World world, BlockPos pos) {
+        return data.getAllowedPlayers(at(world, pos));
     }
 
-    public void removeBeacon(BlockPos pos) {
-        data.removeBeacon(pos);
+    public void removeBeacon(World world, BlockPos pos) {
+        data.removeBeacon(at(world, pos));
         LOGGER.debug("Removed all access data for beacon at {}", pos);
         markDirty();
     }
 
     /** Remove all player restrictions — beacon becomes open to everyone. Owner data is preserved. */
-    public void unrestrictBeacon(BlockPos pos) {
-        data.unrestrictBeacon(pos);
+    public void unrestrictBeacon(World world, BlockPos pos) {
+        data.unrestrictBeacon(at(world, pos));
         LOGGER.info("Beacon at {} unrestricted — all players now receive effects", pos);
         markDirty();
     }
@@ -90,24 +102,24 @@ public class BeaconAccessManager extends PersistentState {
     // Owner
     // -------------------------------------------------------
 
-    public boolean hasOwner(BlockPos pos) {
-        return data.hasOwner(pos);
+    public boolean hasOwner(World world, BlockPos pos) {
+        return data.hasOwner(at(world, pos));
     }
 
-    public UUID getPrimaryOwner(BlockPos pos) {
-        return data.getPrimaryOwner(pos);
+    public UUID getPrimaryOwner(World world, BlockPos pos) {
+        return data.getPrimaryOwner(at(world, pos));
     }
 
-    public boolean isOwner(BlockPos pos, UUID uuid) {
-        return data.isOwner(pos, uuid);
+    public boolean isOwner(World world, BlockPos pos, UUID uuid) {
+        return data.isOwner(at(world, pos), uuid);
     }
 
-    public Set<UUID> getOwners(BlockPos pos) {
-        return data.getOwners(pos);
+    public Set<UUID> getOwners(World world, BlockPos pos) {
+        return data.getOwners(at(world, pos));
     }
 
-    public void setOwner(BlockPos pos, UUID uuid) {
-        data.setOwner(pos, uuid);
+    public void setOwner(World world, BlockPos pos, UUID uuid) {
+        data.setOwner(at(world, pos), uuid);
         LOGGER.debug("Set primary owner of beacon at {} to {}", pos, uuid);
         markDirty();
     }
@@ -116,9 +128,10 @@ public class BeaconAccessManager extends PersistentState {
      * Add a co-manager to the beacon. Does not change primary owner.
      * Returns false if the beacon has no primary owner yet (can't add co-owner without primary).
      */
-    public boolean addOwner(BlockPos pos, UUID uuid) {
-        if (!data.hasOwner(pos)) return false;
-        data.addOwner(pos, uuid);
+    public boolean addOwner(World world, BlockPos pos, UUID uuid) {
+        BeaconPos key = at(world, pos);
+        if (!data.hasOwner(key)) return false;
+        data.addOwner(key, uuid);
         LOGGER.debug("Added co-owner {} to beacon at {}", uuid, pos);
         markDirty();
         return true;
@@ -127,8 +140,8 @@ public class BeaconAccessManager extends PersistentState {
     /**
      * Remove a co-manager. Primary owner can never be removed (returns false).
      */
-    public boolean removeOwner(BlockPos pos, UUID uuid) {
-        boolean removed = data.removeOwner(pos, uuid);
+    public boolean removeOwner(World world, BlockPos pos, UUID uuid) {
+        boolean removed = data.removeOwner(at(world, pos), uuid);
         if (removed) {
             LOGGER.debug("Removed co-owner {} from beacon at {}", uuid, pos);
             markDirty();
@@ -136,6 +149,22 @@ public class BeaconAccessManager extends PersistentState {
             LOGGER.debug("Cannot remove primary owner {} from beacon at {}", uuid, pos);
         }
         return removed;
+    }
+
+    // -------------------------------------------------------
+    // Listings: keys come from the stored data, so there is nothing to claim
+    // -------------------------------------------------------
+
+    public List<BeaconPos> getOwnedBeacons(UUID uuid) {
+        return data.getOwnedBeacons(uuid);
+    }
+
+    public UUID getPrimaryOwner(BeaconPos key) {
+        return data.getPrimaryOwner(key);
+    }
+
+    public Set<UUID> getAllowedPlayers(BeaconPos key) {
+        return data.getAllowedPlayers(key);
     }
 
     // -------------------------------------------------------
@@ -158,7 +187,7 @@ public class BeaconAccessManager extends PersistentState {
     // Debug
     // -------------------------------------------------------
 
-    public Map<BlockPos, Set<UUID>> getDump() {
+    public Map<BeaconPos, Set<UUID>> getDump() {
         return data.getDump();
     }
 }

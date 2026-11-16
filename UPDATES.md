@@ -5,6 +5,21 @@ Format follows [Semantic Versioning](https://semver.org/).
 
 -----
 
+## Unreleased
+
+### Added
+- **`/personalbeacon mine`** — lists the beacons you own or co-manage, for every player (the other subcommands still need op). Each line shows the coordinates (click to copy), the dimension, "open to all" or the number of allowed players, and whether you are the owner or a co-manager.
+- **Settings screen in Mod Menu** (optional): the non-op management toggle and the manage distance. It edits this game's `config/personalbeacon.json`, so it applies to worlds you host; a dedicated server reads its own file.
+
+### Fixed
+- **Beacons in different dimensions shared one access list** ([#3](https://github.com/Tekno5005/personalbeacon/issues/3)). A Nether beacon at the same coordinates as an Overworld beacon got its list, and breaking one deleted the other's data. Access data is now stored per dimension. Data saved before this version has no dimension: each beacon moves to the first dimension where a beacon at that position is used, so beacons in the Nether and the End keep their lists.
+- **Manage Access button icon was distorted** ([#4](https://github.com/Tekno5005/personalbeacon/issues/4)). The 20×20 textures were shrunk to the 11×11 button. They are redrawn at 11×11 in the same colors and drawn 1:1.
+
+### Changed
+- **`/personalbeacon add|remove|setowner|clear`** use the dimension the command runs in, and `/personalbeacon debug` shows each beacon's dimension.
+
+-----
+
 ## v2.1.0 — 2026-11-15
 
 ### Added
