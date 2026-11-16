@@ -7,6 +7,7 @@ import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.minecraft.server.command.CommandManager;
 import net.minecraft.server.command.ServerCommandSource;
 import net.minecraft.server.network.ServerPlayerEntity;
+import net.minecraft.server.world.ServerWorld;
 import net.minecraft.text.Text;
 import net.minecraft.util.math.BlockPos;
 
@@ -67,6 +68,7 @@ public class DebugCommand {
         ServerCommandSource src = ctx.getSource();
         src.sendFeedback(() -> Text.literal("§6§l=== Personal Beacon Commands ==="), false);
         src.sendFeedback(() -> Text.literal("§e/personalbeacon help §7- Shows this message."), false);
+        src.sendFeedback(() -> Text.literal("§7Coordinates are in the dimension you run the command in."), false);
         src.sendFeedback(() -> Text.literal("§e/personalbeacon debug §7- Lists all restricted beacons with UUIDs."), false);
         src.sendFeedback(() -> Text.literal("§e/personalbeacon add <player> <x> <y> <z> §7- Add player to beacon."), false);
         src.sendFeedback(() -> Text.literal("§e/personalbeacon remove <player> <x> <y> <z> §7- Remove player from beacon."), false);
@@ -91,14 +93,15 @@ public class DebugCommand {
         src.sendFeedback(() -> Text.literal("§7Restricted beacons: §f" + snapshot.size()), false);
 
         for (var entry : snapshot.entrySet()) {
-            BlockPos pos = entry.getKey();
+            BeaconPos key = entry.getKey();
+            BlockPos pos = key.pos();
             Set<UUID> allowed = entry.getValue();
-            UUID owner = manager.getPrimaryOwner(pos);
+            UUID owner = manager.getPrimaryOwner(key);
             String ownerName = owner != null ? manager.getPlayerName(owner) : "none";
 
             src.sendFeedback(() -> Text.literal(
                 "§b[Beacon] §f" + pos.getX() + ", " + pos.getY() + ", " + pos.getZ()
-                + " §7(" + allowed.size() + " players) §eOwner: §f" + ownerName
+                + " §7" + key.dimension() + " (" + allowed.size() + " players) §eOwner: §f" + ownerName
             ), false);
 
             for (UUID uuid : allowed) {
@@ -117,20 +120,21 @@ public class DebugCommand {
         String playerName = StringArgumentType.getString(ctx, "player");
         BlockPos pos = getPos(ctx);
         ServerCommandSource src = ctx.getSource();
+        ServerWorld world = src.getWorld();
         BeaconAccessManager manager = BeaconAccessManager.get(src.getServer());
 
         // Try to find online player first
         ServerPlayerEntity online = src.getServer().getPlayerManager().getPlayer(playerName);
         if (online != null) {
-            if (!manager.hasOwner(pos)) manager.setOwner(pos, online.getUuid());
-            manager.addPlayer(pos, online.getUuid(), online.getName().getString());
+            if (!manager.hasOwner(world, pos)) manager.setOwner(world, pos, online.getUuid());
+            manager.addPlayer(world, pos, online.getUuid(), online.getName().getString());
             src.sendFeedback(() -> Text.literal("§aAdded §f" + playerName + " §ato beacon at " + posStr(pos)), false);
         } else {
             // Player is offline — look up UUID from name cache
             UUID uuid = findUUIDByName(manager, playerName);
             if (uuid != null) {
-                if (!manager.hasOwner(pos)) manager.setOwner(pos, uuid);
-                manager.addPlayer(pos, uuid, playerName);
+                if (!manager.hasOwner(world, pos)) manager.setOwner(world, pos, uuid);
+                manager.addPlayer(world, pos, uuid, playerName);
                 src.sendFeedback(() -> Text.literal("§aAdded offline player §f" + playerName + " §ato beacon at " + posStr(pos)), false);
             } else {
                 src.sendFeedback(() -> Text.literal("§cPlayer §f" + playerName + " §cnot found. They must have joined this server at least once."), false);
@@ -144,6 +148,7 @@ public class DebugCommand {
         String playerName = StringArgumentType.getString(ctx, "player");
         BlockPos pos = getPos(ctx);
         ServerCommandSource src = ctx.getSource();
+        ServerWorld world = src.getWorld();
         BeaconAccessManager manager = BeaconAccessManager.get(src.getServer());
 
         ServerPlayerEntity online = src.getServer().getPlayerManager().getPlayer(playerName);
@@ -154,7 +159,7 @@ public class DebugCommand {
             return 0;
         }
 
-        manager.removePlayer(pos, uuid);
+        manager.removePlayer(world, pos, uuid);
         src.sendFeedback(() -> Text.literal("§aRemoved §f" + playerName + " §afrom beacon at " + posStr(pos)), false);
         return 1;
     }
@@ -163,6 +168,7 @@ public class DebugCommand {
         String playerName = StringArgumentType.getString(ctx, "player");
         BlockPos pos = getPos(ctx);
         ServerCommandSource src = ctx.getSource();
+        ServerWorld world = src.getWorld();
         BeaconAccessManager manager = BeaconAccessManager.get(src.getServer());
 
         ServerPlayerEntity online = src.getServer().getPlayerManager().getPlayer(playerName);
@@ -173,15 +179,16 @@ public class DebugCommand {
             return 0;
         }
 
-        manager.setOwner(pos, uuid);
+        manager.setOwner(world, pos, uuid);
         src.sendFeedback(() -> Text.literal("§aSet owner of beacon at " + posStr(pos) + " §ato §f" + playerName), false);
         return 1;
     }
 
     private static int executeClear(CommandContext<ServerCommandSource> ctx) {
         BlockPos pos = getPos(ctx);
+        ServerWorld world = ctx.getSource().getWorld();
         BeaconAccessManager manager = BeaconAccessManager.get(ctx.getSource().getServer());
-        manager.removeBeacon(pos);
+        manager.removeBeacon(world, pos);
         ctx.getSource().sendFeedback(() -> Text.literal("§aCleared access data for beacon at " + posStr(pos)), false);
         return 1;
     }

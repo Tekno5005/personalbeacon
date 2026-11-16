@@ -29,7 +29,7 @@ public class WorldChunkMixin {
     private Object personalbeacon$purgeRemovedBeacon(Object removed, BlockPos pos) {
         if (removed instanceof BeaconBlockEntity
                 && ((WorldChunk) (Object) this).getWorld() instanceof ServerWorld world) {
-            BeaconAccessManager.get(world.getServer()).removeBeacon(pos);
+            BeaconAccessManager.get(world.getServer()).removeBeacon(world, pos);
             PersonalBeaconMod.LOGGER.debug("Purged access data of removed beacon at {}", pos);
         }
         return removed;
