@@ -54,5 +54,12 @@
   "personalbeacon.dimension.overworld": "Dünya",
   "personalbeacon.dimension.the_nether": "Nether",
   "personalbeacon.dimension.the_end": "End",
-  "personalbeacon.dimension.unknown": "bilinmeyen boyut"
+  "personalbeacon.dimension.unknown": "bilinmeyen boyut",
+  "personalbeacon.config.title": "Personal Beacon Ayarları",
+  "personalbeacon.config.note": "Senin açtığın dünyalarda geçerli. Sunucular kendi ayar dosyasını kullanır.",
+  "personalbeacon.config.allow_non_op": "OP olmayanlar beacon yönetebilir",
+  "personalbeacon.config.allow_non_op.tip": "Açık: bir beacon'ı ilk kısıtlayan oyuncu onun sahibi olur ve sadece sahipleri yönetebilir. Kapalı: sadece OP'ler yönetebilir. OP'ler her zaman yönetebilir.",
+  "personalbeacon.config.max_distance": "En fazla yönetme mesafesi: %s",
+  "personalbeacon.config.max_distance.tip": "Oyuncunun izinleri değiştirmek için beacon'a en fazla ne kadar uzak olabileceği. Sadece sunucularda kontrol edilir.",
+  "personalbeacon.config.blocks": "%s blok"
 }

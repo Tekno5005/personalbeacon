@@ -54,5 +54,12 @@
   "personalbeacon.dimension.overworld": "Overworld",
   "personalbeacon.dimension.the_nether": "Nether",
   "personalbeacon.dimension.the_end": "End",
-  "personalbeacon.dimension.unknown": "unknown dimension"
+  "personalbeacon.dimension.unknown": "unknown dimension",
+  "personalbeacon.config.title": "Personal Beacon Settings",
+  "personalbeacon.config.note": "Used by worlds you host. A server uses its own config file.",
+  "personalbeacon.config.allow_non_op": "Non-op players can manage beacons",
+  "personalbeacon.config.allow_non_op.tip": "On: the first player to restrict a beacon owns it, and only its owners can manage it. Off: only ops can manage beacons. Ops always can.",
+  "personalbeacon.config.max_distance": "Max manage distance: %s",
+  "personalbeacon.config.max_distance.tip": "How far a player may be from the beacon to change its access. Only checked on dedicated servers.",
+  "personalbeacon.config.blocks": "%s blocks"
 }
