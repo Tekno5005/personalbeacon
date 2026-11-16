@@ -44,5 +44,15 @@
   "personalbeacon.screen.confirm_open": "¿Seguro?",
   "personalbeacon.screen.no_results": "No se encontraron jugadores",
   "personalbeacon.feedback.restricted": "✔ Beacon restringido",
-  "personalbeacon.screen.tip.restrict": "Solo tú y los jugadores que actives recibirán efectos"
+  "personalbeacon.screen.tip.restrict": "Solo tú y los jugadores que actives recibirán efectos",
+  "personalbeacon.command.mine.none": "No tienes ningún faro.",
+  "personalbeacon.command.mine.header": "Tus faros (%s):",
+  "personalbeacon.command.mine.owner": "propietario",
+  "personalbeacon.command.mine.co_manager": "co-administrador",
+  "personalbeacon.command.mine.open": "abierto a todos",
+  "personalbeacon.command.mine.restricted": "%s permitidos",
+  "personalbeacon.dimension.overworld": "Superficie",
+  "personalbeacon.dimension.the_nether": "Nether",
+  "personalbeacon.dimension.the_end": "End",
+  "personalbeacon.dimension.unknown": "dimensión desconocida"
 }

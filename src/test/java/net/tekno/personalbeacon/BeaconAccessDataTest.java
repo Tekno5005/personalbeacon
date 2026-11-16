@@ -450,6 +450,29 @@ class BeaconAccessDataTest {
     }
 
     // -------------------------------------------------------
+    // Owned beacons (/personalbeacon mine)
+    // -------------------------------------------------------
+
+    @Test
+    void getOwnedBeacons_ownerAndCoManager_sortedByDimensionThenPosition() {
+        BeaconAccessData data = new BeaconAccessData();
+        UUID me = UUID.randomUUID(), other = UUID.randomUUID();
+        BeaconPos mineB = in(OVERWORLD, 50, 64, 0);
+        BeaconPos mineA = in(OVERWORLD, -20, 64, 0);
+        BeaconPos coManaged = in("minecraft:the_nether", 0, 64, 0);
+        BeaconPos notMine = in(OVERWORLD, 0, 64, 0);
+
+        data.setOwner(mineB, me);
+        data.setOwner(mineA, me);
+        data.setOwner(coManaged, other);
+        data.addOwner(coManaged, me);
+        data.setOwner(notMine, other);
+        data.addPlayer(notMine, me, "Me"); // allowed, but not an owner
+
+        assertEquals(java.util.List.of(mineA, mineB, coManaged), data.getOwnedBeacons(me));
+    }
+
+    // -------------------------------------------------------
     // Helpers
     // -------------------------------------------------------
 

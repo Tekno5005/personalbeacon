@@ -44,5 +44,15 @@
   "personalbeacon.screen.confirm_open": "Emin misin?",
   "personalbeacon.screen.no_results": "Bu isimde oyuncu yok",
   "personalbeacon.feedback.restricted": "✔ Beacon kısıtlandı",
-  "personalbeacon.screen.tip.restrict": "Sadece sen ve açtığın oyuncular efekt alır"
+  "personalbeacon.screen.tip.restrict": "Sadece sen ve açtığın oyuncular efekt alır",
+  "personalbeacon.command.mine.none": "Hiç beacon'ın yok.",
+  "personalbeacon.command.mine.header": "Beacon'ların (%s):",
+  "personalbeacon.command.mine.owner": "sahibi",
+  "personalbeacon.command.mine.co_manager": "yardımcı yönetici",
+  "personalbeacon.command.mine.open": "herkese açık",
+  "personalbeacon.command.mine.restricted": "%s izinli",
+  "personalbeacon.dimension.overworld": "Dünya",
+  "personalbeacon.dimension.the_nether": "Nether",
+  "personalbeacon.dimension.the_end": "End",
+  "personalbeacon.dimension.unknown": "bilinmeyen boyut"
 }
